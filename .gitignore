@@ -1,0 +1,50 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env
+.env.*
+!.env.example
+
+# Credentials and Keys (Mandatory Security - NEVER commit)
+credentials/
+**/credentials/
+backend/credentials/
+backend/credentials/*
+*.keystore
+service_account.json
+firebase_service_account.json
+google-services.json
+*service_account*.json
+*bidder-fdede*.json
+
+# Node dependencies & build
+node_modules/
+dist/
+.vite/
+
+# Flutter / Dart build
+bidder_app/.dart_tool/
+bidder_app/.flutter-plugins
+bidder_app/.flutter-plugins-dependencies
+bidder_app/build/
+bidder_app/.packages
+bidder_app/android/.gradle/
+bidder_app/android/local.properties
+bidder_app/ios/Flutter/Generated.xcconfig
+
+# IDE & OS files
+.idea/
+.vscode/
+*.swp
+Thumbs.db
+.DS_Store
+
+# Local storage drive & test outputs
+backend/storage_drive/
+.pytest_cache/

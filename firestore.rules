@@ -1,0 +1,71 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Function to check if the request is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Function to check user role
+    function isOfficerOrAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.role == 'OFFICER' || request.auth.token.role == 'ADMIN' || request.auth.token.email.matches('.*@gem[.]gov[.]in'));
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow read, write: if isOwner(userId) || isOfficerOrAdmin();
+    }
+
+    // Companies Collection
+    match /companies/{companyId} {
+      allow read: if isAuthenticated();
+      allow write: if isOfficerOrAdmin();
+    }
+
+    // Tenders & Requirements: Publicly readable for authenticated users; write only by officers
+    match /tenders/{tenderId} {
+      allow read: if isAuthenticated();
+      allow write: if isOfficerOrAdmin();
+
+      match /requirements/{requirementId} {
+        allow read: if isAuthenticated();
+        allow write: if isOfficerOrAdmin();
+      }
+    }
+
+    // Applications: Bidders can only read/write their own applications; Officers can read/write all
+    match /applications/{applicationId} {
+      allow read: if isOfficerOrAdmin() || (isAuthenticated() && resource.data.bidderUid == request.auth.uid);
+      allow create: if isAuthenticated() && request.resource.data.bidderUid == request.auth.uid;
+      allow update: if isOfficerOrAdmin() || (isAuthenticated() && resource.data.bidderUid == request.auth.uid);
+
+      match /evidence/{evidenceId} {
+        allow read: if isOfficerOrAdmin() || (isAuthenticated() && get(/databases/$(database)/documents/applications/$(applicationId)).data.bidderUid == request.auth.uid);
+        allow write: if isOfficerOrAdmin() || (isAuthenticated() && get(/databases/$(database)/documents/applications/$(applicationId)).data.bidderUid == request.auth.uid);
+      }
+
+      match /results/{resultId} {
+        allow read: if isAuthenticated();
+        allow write: if isOfficerOrAdmin();
+      }
+    }
+
+    // Review Cases: Officer & Admin only
+    match /review_cases/{caseId} {
+      allow read, write: if isOfficerOrAdmin();
+    }
+
+    // Audit Logs: Append-only for system/officers; readable by officers
+    match /audit_logs/{auditId} {
+      allow read: if isOfficerOrAdmin();
+      allow create: if isOfficerOrAdmin();
+      allow update, delete: if false; // Immutable audit logs
+    }
+  }
+}

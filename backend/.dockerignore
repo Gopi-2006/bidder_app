@@ -1,0 +1,41 @@
+# Docker ignore for production Cloud Run build
+# Credentials & secrets (NEVER include in image)
+credentials/
+*.json
+.env
+.env.*
+!.env.example
+
+# Local storage emulator (Cloud Run has no local disk)
+storage_drive/local_firestore/
+storage_drive/extracted_text/
+storage_drive/reports/
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Version control & docs
+.git/
+.gitignore
+README.md
+DEPLOY.md
+
+# Scratch / debug scripts (not needed in prod image)
+debug_oem_parse.py
+find_gst_file.py
+generate_local_gov_datasets.py
+inspect_*.py
+search_all_drives.py
+setup_gov_folders.py
