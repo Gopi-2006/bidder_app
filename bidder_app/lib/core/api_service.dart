@@ -6,22 +6,21 @@ import 'firebase/auth_service.dart';
 
 class ApiService {
   // ─────────────────────────────────────────────────────────────────────────
-  // PRODUCTION API URL CONFIGURATION
+  // PRODUCTION API URL CONFIGURATION (RENDER WEB SERVICE)
   //
-  // After deploying to Google Cloud Run, replace the URL below with your
-  // permanent Cloud Run service URL, e.g.:
-  //   https://gem-backend-<hash>-uc.a.run.app
+  // Permanent production backend service URL on Render:
+  //   https://gem-backend-rrom.onrender.com
   //
   // You can also override at build time without touching this file:
   //   flutter build apk --release \
-  //     --dart-define=API_HOST_URL=https://your-service.run.app \
-  //     --dart-define=API_BASE_URL=https://your-service.run.app/api/v1
+  //     --dart-define=API_HOST_URL=https://gem-backend-rrom.onrender.com \
+  //     --dart-define=API_BASE_URL=https://gem-backend-rrom.onrender.com/api/v1
   //
   // DO NOT use localhost, 127.0.0.1, or any laptop LAN IP here.
   // The laptop must NOT be required for production app to function.
   // ─────────────────────────────────────────────────────────────────────────
   static const String _defaultProductionHost =
-      'https://REPLACE_WITH_CLOUD_RUN_URL';
+      'https://gem-backend-rrom.onrender.com';
 
   static const String hostUrl = String.fromEnvironment(
     'API_HOST_URL',
