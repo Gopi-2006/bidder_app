@@ -12,13 +12,32 @@ TENDERS_CACHE_FILE = os.path.join(LOCAL_CACHE_DIR, "tenders.json")
 APPLICATIONS_CACHE_FILE = os.path.join(LOCAL_CACHE_DIR, "applications.json")
 
 
+BUNDLED_TENDERS_FILE = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "data", "tenders.json")
+)
+
+
 def _read_local_tenders() -> Dict[str, Dict[str, Any]]:
+    # 1. First check dynamic runtime cache
     if os.path.exists(TENDERS_CACHE_FILE):
         try:
             with open(TENDERS_CACHE_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                res = json.load(f)
+                if res and isinstance(res, dict) and len(res) > 0:
+                    return res
         except Exception:
             pass
+
+    # 2. Fallback to bundled tenders dataset (contains all 53 tenders)
+    if os.path.exists(BUNDLED_TENDERS_FILE):
+        try:
+            with open(BUNDLED_TENDERS_FILE, "r", encoding="utf-8") as f:
+                res = json.load(f)
+                if res and isinstance(res, dict):
+                    return res
+        except Exception:
+            pass
+
     return {}
 
 

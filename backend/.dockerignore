@@ -1,13 +1,13 @@
-# Docker ignore for production Cloud Run build
 # Credentials & secrets (NEVER include in image)
 credentials/
 *.json
+!app/data/*.json
+!storage_drive/local_firestore/*.json
 .env
 .env.*
 !.env.example
 
-# Local storage emulator (Cloud Run has no local disk)
-storage_drive/local_firestore/
+# Local temporary storage
 storage_drive/extracted_text/
 storage_drive/reports/
 
