@@ -1,9 +1,20 @@
 import 'package:flutter/material.dart';
-import '../core/theme.dart';
+import '../core/design_system.dart';
 import '../core/firebase/auth_service.dart';
 import '../core/api_service.dart';
 import '../models/tender_models.dart';
+import '../widgets/gov_card.dart';
+import '../widgets/gov_buttons.dart';
+import '../widgets/status_badge.dart';
+import '../widgets/state_views.dart';
 import 'login_screen.dart';
+import 'document_vault_screen.dart';
+import 'government_verification_screen.dart';
+
+/// ─────────────────────────────────────────────────────────────────────────────
+/// GeM Compliance — Enterprise Profile & Verified Credentials
+/// Section 24: Official enterprise identity, verification status, and audit records
+/// ─────────────────────────────────────────────────────────────────────────────
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -24,11 +35,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadProfile() async {
     setState(() => _isLoading = true);
-    final prof = await ApiService.fetchMeProfile();
-    setState(() {
-      _profile = prof;
-      _isLoading = false;
-    });
+    try {
+      final prof = await ApiService.fetchMeProfile();
+      if (mounted) {
+        setState(() {
+          _profile = prof;
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _handleLogout() async {
@@ -41,7 +58,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626)),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('Sign Out'),
           ),
         ],
@@ -63,222 +80,246 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuthService.currentUser;
-    final companyName = _profile?.companyName ?? FirebaseAuthService.currentCompanyName;
-    final gstin = _profile?.gstin ?? '29ABCDE1234F1Z5';
+    final companyName = _profile?.companyName.isNotEmpty == true
+        ? _profile!.companyName
+        : FirebaseAuthService.currentCompanyName.isNotEmpty
+            ? FirebaseAuthService.currentCompanyName
+            : 'Bharat Infotech & Networks Pvt Ltd';
+    final gstin = _profile?.gstin.isNotEmpty == true ? _profile!.gstin : '29ABCDE1234F1Z5';
     final email = user?.email ?? _profile?.email ?? 'tender.desk@bharatnetworks.in';
-    final uid = FirebaseAuthService.currentUid;
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Enterprise Profile & Credentials'),
+        title: const Text('Enterprise Profile'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout_rounded),
             tooltip: 'Sign Out',
             onPressed: _handleLogout,
           ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: GemTheme.saffron))
+          ? const GovLoadingSkeleton(count: 3)
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppSpacing.lg),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Company Card Header
-                  Card(
-                    elevation: 2,
-                    child: Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 60,
-                            height: 60,
-                            decoration: BoxDecoration(
-                              color: GemTheme.primaryNavy.withValues(alpha: 0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Center(
-                              child: Icon(Icons.business_rounded, color: GemTheme.primaryNavy, size: 32),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  companyName,
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: GemTheme.primaryNavy,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFDCFCE7),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: const Text(
-                                    'Role: PUBLIC_BIDDER',
-                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF166534)),
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  email,
-                                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+            // Company Profile Header Card
+            GovCard(
+              elevated: true,
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: Column(
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: const BoxDecoration(
+                      color: AppColors.primaryNavy,
+                      shape: BoxShape.circle,
+                      boxShadow: AppShadows.card,
+                    ),
+                    child: Center(
+                      child: Text(
+                        companyName.isNotEmpty ? companyName[0].toUpperCase() : 'B',
+                        style: const TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
-
-                  // Government Registry Credentials Card
-                  const Text(
-                    'Government Registry Identifiers',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: GemTheme.primaryNavy),
-                  ),
-                  const SizedBox(height: 10),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          _buildProfileRow(
-                            icon: Icons.receipt_long_outlined,
-                            label: 'GSTIN Registration',
-                            value: gstin,
-                            verified: true,
-                          ),
-                          const Divider(height: 20),
-                          _buildProfileRow(
-                            icon: Icons.credit_card_outlined,
-                            label: 'Company PAN',
-                            value: 'AAACB1234F',
-                            verified: true,
-                          ),
-                          const Divider(height: 20),
-                          _buildProfileRow(
-                            icon: Icons.workspace_premium_outlined,
-                            label: 'Udyam MSME Number',
-                            value: 'UDYAM-KR-03-0012345',
-                            verified: true,
-                          ),
-                        ],
-                      ),
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    companyName,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primaryNavy,
+                      letterSpacing: -0.3,
                     ),
                   ),
-                  const SizedBox(height: 20),
-
-                  // Platform Security & Architecture
-                  const Text(
-                    'Security & Trust Architecture',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: GemTheme.primaryNavy),
+                  const SizedBox(height: 4),
+                  Text(
+                    email,
+                    style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
                   ),
-                  const SizedBox(height: 10),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          _buildProfileRow(
-                            icon: Icons.fingerprint,
-                            label: 'Firebase Auth UID',
-                            value: uid,
-                            verified: null,
-                          ),
-                          const Divider(height: 20),
-                          _buildProfileRow(
-                            icon: Icons.cloud_done_outlined,
-                            label: 'Google Drive Storage',
-                            value: 'GEM-COMPLIANCE Active Vault',
-                            verified: true,
-                          ),
-                          const Divider(height: 20),
-                          _buildProfileRow(
-                            icon: Icons.lock_clock_outlined,
-                            label: 'Rule Engine Evaluation',
-                            value: 'Deterministic Engine v1.0.0',
-                            verified: true,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Sign Out Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _handleLogout,
-                      icon: const Icon(Icons.logout, color: Color(0xFFDC2626)),
-                      label: const Text(
-                        'Sign Out from GeM Portal',
-                        style: TextStyle(color: Color(0xFFDC2626), fontWeight: FontWeight.bold),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: const BorderSide(color: Color(0xFFFCA5A5)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: AppSpacing.md),
+                  StatusBadge.verified(label: 'Verified Business'),
                 ],
               ),
             ),
+
+            const SizedBox(height: AppSpacing.lg),
+
+            // SECTION 1: Government Verification Status (Section 24)
+            GovCard(
+              elevated: true,
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'GOVERNMENT VERIFICATION',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textMuted,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const GovernmentVerificationScreen()),
+                          );
+                        },
+                        child: const Text('Re-verify', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  _buildGovVerificationItem('PAN Record', 'NSDL / Income Tax Dept', true),
+                  const Divider(height: 14),
+                  _buildGovVerificationItem('Udyam MSME', 'Ministry of MSME', true),
+                  const Divider(height: 14),
+                  _buildGovVerificationItem('GSTIN Network', gstin, true),
+                  const Divider(height: 14),
+                  _buildGovVerificationItem('OEM Authorization', 'Manufacturer Partner', true),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.lg),
+
+            // SECTION 2: Document Vault Access
+            GovCard(
+              elevated: true,
+              padding: const EdgeInsets.all(AppSpacing.md),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const DocumentVaultScreen()),
+                );
+              },
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.infoBg,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    child: const Icon(Icons.folder_shared_rounded, color: AppColors.info, size: 22),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Verified Document Vault',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.primaryNavy),
+                        ),
+                        Text(
+                          'Encrypted certificates, CA turnovers & OEM MAF',
+                          style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.lg),
+
+            // SECTION 3: App Information & Security
+            const GovCard(
+              elevated: true,
+              padding: EdgeInsets.all(AppSpacing.lg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'SECURITY & COMPLIANCE PLATFORM',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textMuted,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  SizedBox(height: AppSpacing.md),
+                  InfoRow(label: 'Platform', value: 'GeM Compliance Verification'),
+                  InfoRow(label: 'Application Version', value: 'v1.0.0 (SIH 2026)'),
+                  InfoRow(label: 'Service Endpoint', value: 'gem-backend-rrom.onrender.com'),
+                  InfoRow(label: 'Encryption Standard', value: 'TLS 1.3 / AES-256'),
+                  InfoRow(label: 'Compliance Engine', value: 'Deterministic Clause Parser'),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.xl),
+
+            // Sign Out Button
+            SecondaryGovButton(
+              label: 'Sign Out',
+              icon: Icons.logout_rounded,
+              borderColor: AppColors.errorBorder,
+              textColor: AppColors.error,
+              onPressed: _handleLogout,
+            ),
+
+            const SizedBox(height: AppSpacing.lg),
+
+            const Center(
+              child: Text(
+                'National Public Procurement Portal • Government of India',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildProfileRow({
-    required IconData icon,
-    required String label,
-    required String value,
-    required bool? verified,
-  }) {
+  Widget _buildGovVerificationItem(String title, String subtitle, bool isVerified) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: const Color(0xFF64748B)),
-        const SizedBox(width: 12),
+        Icon(
+          isVerified ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+          size: 18,
+          color: isVerified ? AppColors.success : AppColors.textDisabled,
+        ),
+        const SizedBox(width: 10),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-              const SizedBox(height: 2),
               Text(
-                value,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                title,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+              ),
+              Text(
+                subtitle,
+                style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
               ),
             ],
           ),
         ),
-        if (verified != null)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: verified ? const Color(0xFFDCFCE7) : const Color(0xFFFEF3C7),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              verified ? 'VERIFIED' : 'PENDING',
-              style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.bold,
-                color: verified ? const Color(0xFF166534) : const Color(0xFF92400E),
-              ),
-            ),
-          ),
+        StatusBadge.verified(label: 'Verified', compact: true),
       ],
     );
   }

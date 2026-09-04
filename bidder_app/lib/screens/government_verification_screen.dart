@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
-import '../core/theme.dart';
+import '../core/design_system.dart';
 import '../core/api_service.dart';
+import '../widgets/gov_card.dart';
+import '../widgets/gov_buttons.dart';
+import '../widgets/status_badge.dart';
+import '../widgets/state_views.dart';
 import 'company_profile_confirmation_screen.dart';
-import 'login_screen.dart';
+
+/// ─────────────────────────────────────────────────────────────────────────────
+/// GeM Compliance — Government Business Verification
+/// Sections 7, 8, 9: Step-based official cross-check (PAN -> UDYAM -> GST -> OEM)
+/// ─────────────────────────────────────────────────────────────────────────────
 
 enum VerificationStep { pan, udyam, gst, oem, finalized }
 
@@ -35,7 +43,7 @@ class _GovernmentVerificationScreenState extends State<GovernmentVerificationScr
   bool _isLoading = false;
   String? _errorMessage;
 
-  // Verified Document Payloads (Temporary in-memory session)
+  // Verified Document Payloads
   Map<String, dynamic>? _verifiedPan;
   Map<String, dynamic>? _verifiedUdyam;
   Map<String, dynamic>? _verifiedGst;
@@ -58,16 +66,12 @@ class _GovernmentVerificationScreenState extends State<GovernmentVerificationScr
     setState(() {
       _panController.text = "ABCDE1234F";
       _panPinController.text = "123456";
-
       _udyamController.text = "UDYAM-MH-01-0000001";
       _udyamPinController.text = "123456";
-
       _gstController.text = "22AAAAA1234A1Z5";
       _gstPinController.text = "123456";
-
       _oemController.text = "OEM-MH-2026-001";
       _oemPinController.text = "123456";
-
       _errorMessage = null;
     });
   }
@@ -76,21 +80,16 @@ class _GovernmentVerificationScreenState extends State<GovernmentVerificationScr
     setState(() {
       _panController.text = "BCDEF2345G";
       _panPinController.text = "123456";
-
       _udyamController.text = "UDYAM-KA-02-0000002";
       _udyamPinController.text = "123456";
-
       _gstController.text = "22BBBBB2345B1Z6";
       _gstPinController.text = "123456";
-
       _oemController.text = "OEM-KA-2026-002";
       _oemPinController.text = "123456";
-
       _errorMessage = null;
     });
   }
 
-  // Step 1: PAN Verification
   Future<void> _verifyPan() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() { _isLoading = true; _errorMessage = null; });
@@ -108,16 +107,15 @@ class _GovernmentVerificationScreenState extends State<GovernmentVerificationScr
           _errorMessage = null;
         });
       } else {
-        setState(() { _errorMessage = res['message']; });
+        setState(() { _errorMessage = res['message'] ?? 'PAN verification failed. Check credentials.'; });
       }
-    } catch (e) {
-      setState(() { _errorMessage = 'PAN verification error: $e'; });
+    } catch (_) {
+      setState(() { _errorMessage = 'Unable to connect to government records. Please check your connection.'; });
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // Step 2: Udyam Verification
   Future<void> _verifyUdyam() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() { _isLoading = true; _errorMessage = null; });
@@ -135,16 +133,15 @@ class _GovernmentVerificationScreenState extends State<GovernmentVerificationScr
           _errorMessage = null;
         });
       } else {
-        setState(() { _errorMessage = res['message']; });
+        setState(() { _errorMessage = res['message'] ?? 'Udyam verification failed.'; });
       }
-    } catch (e) {
-      setState(() { _errorMessage = 'Udyam verification error: $e'; });
+    } catch (_) {
+      setState(() { _errorMessage = 'Unable to connect to government records. Please check your connection.'; });
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // Step 3: GST Verification
   Future<void> _verifyGst() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() { _isLoading = true; _errorMessage = null; });
@@ -162,16 +159,15 @@ class _GovernmentVerificationScreenState extends State<GovernmentVerificationScr
           _errorMessage = null;
         });
       } else {
-        setState(() { _errorMessage = res['message']; });
+        setState(() { _errorMessage = res['message'] ?? 'GST verification failed.'; });
       }
-    } catch (e) {
-      setState(() { _errorMessage = 'GST verification error: $e'; });
+    } catch (_) {
+      setState(() { _errorMessage = 'Unable to connect to government records. Please check your connection.'; });
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // Step 4: OEM Verification
   Future<void> _verifyOem() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() { _isLoading = true; _errorMessage = null; });
@@ -189,16 +185,15 @@ class _GovernmentVerificationScreenState extends State<GovernmentVerificationScr
           _errorMessage = null;
         });
       } else {
-        setState(() { _errorMessage = res['message']; });
+        setState(() { _errorMessage = res['message'] ?? 'OEM authorization verification failed.'; });
       }
-    } catch (e) {
-      setState(() { _errorMessage = 'OEM verification error: $e'; });
+    } catch (_) {
+      setState(() { _errorMessage = 'Unable to connect to government records. Please check your connection.'; });
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // Finalize Verification
   Future<void> _finalizeAll() async {
     if (_verifiedPan == null || _verifiedUdyam == null || _verifiedGst == null || _verifiedOem == null) {
       setState(() { _errorMessage = 'Please complete verification for all four documents.'; });
@@ -235,10 +230,10 @@ class _GovernmentVerificationScreenState extends State<GovernmentVerificationScr
           ),
         );
       } else {
-        setState(() { _errorMessage = res['message']; });
+        setState(() { _errorMessage = res['message'] ?? 'Failed to finalize enterprise profile.'; });
       }
-    } catch (e) {
-      setState(() { _errorMessage = 'Finalization error: $e'; });
+    } catch (_) {
+      setState(() { _errorMessage = 'Service temporarily unavailable. Please try again.'; });
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -247,115 +242,70 @@ class _GovernmentVerificationScreenState extends State<GovernmentVerificationScr
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: GemTheme.background,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Government Verification'),
-        backgroundColor: GemTheme.primaryNavy,
+        title: const Text('Verify Your Business'),
+        actions: [
+          PopupMenuButton<String>(
+            tooltip: 'Load Sample Records',
+            icon: const Icon(Icons.dataset_rounded),
+            onSelected: (val) {
+              if (val == 'nexora') _fillSampleNexora();
+              if (val == 'bluepeak') _fillSampleBluePeak();
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'nexora', child: Text('Prefill: Nexora Tech Pvt Ltd')),
+              PopupMenuItem(value: 'bluepeak', child: Text('Prefill: BluePeak Systems LLP')),
+            ],
+          ),
+        ],
       ),
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20.0),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 560),
+              constraints: const BoxConstraints(maxWidth: 580),
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Header Emblem & Portal Title
-                    Center(
-                      child: Column(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: GemTheme.primaryNavy.withValues(alpha: 0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.shield_outlined, size: 36, color: GemTheme.primaryNavy),
-                          ),
-                          const SizedBox(height: 10),
-                          const Text(
-                            'Bidder Government Verification',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: GemTheme.primaryNavy),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'One-time sequential verification against simulated DigiLocker datasets',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
+                    // Header Card
+                    _buildHeaderBanner(),
+                    const SizedBox(height: AppSpacing.lg),
 
-                    // Step Progress Indicator Bar
-                    _buildStepProgress(),
-                    const SizedBox(height: 16),
+                    // Progress Stepper Bar
+                    _buildStepperBar(),
+                    const SizedBox(height: AppSpacing.xl),
 
-                    // Quick Demo Fill Chips
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        ActionChip(
-                          avatar: const Icon(Icons.flash_on, size: 16, color: GemTheme.primaryNavy),
-                          label: const Text('Fill Nexora Tech (Demo)', style: TextStyle(fontSize: 11)),
-                          onPressed: _fillSampleNexora,
-                        ),
-                        ActionChip(
-                          avatar: const Icon(Icons.flash_on, size: 16, color: Colors.indigo),
-                          label: const Text('Fill BluePeak Sol (Demo)', style: TextStyle(fontSize: 11)),
-                          onPressed: _fillSampleBluePeak,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Dynamic Step Content Card
-                    _buildCurrentStepCard(),
-
-                    // Error Message Banner
+                    // Error Message
                     if (_errorMessage != null) ...[
-                      const SizedBox(height: 16),
                       Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(AppSpacing.md),
                         decoration: BoxDecoration(
-                          color: Colors.red.shade50,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.red.shade200),
+                          color: AppColors.errorBg,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          border: Border.all(color: AppColors.errorBorder),
                         ),
                         child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.error_outline, color: Colors.red, size: 20),
-                            const SizedBox(width: 10),
+                            const Icon(Icons.error_outline_rounded, size: 18, color: AppColors.error),
+                            const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 _errorMessage!,
-                                style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.w600),
+                                style: const TextStyle(fontSize: 12, color: AppColors.error),
                               ),
                             ),
                           ],
                         ),
                       ),
+                      const SizedBox(height: AppSpacing.lg),
                     ],
 
-                    const SizedBox(height: 24),
-
-                    // Switch to Email Login Link
-                    Center(
-                      child: TextButton(
-                        onPressed: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
-                        },
-                        child: const Text('Prefer standard email / password sign in? Click here', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                      ),
-                    ),
+                    // Current Step View
+                    _buildStepContent(),
                   ],
                 ),
               ),
@@ -366,651 +316,523 @@ class _GovernmentVerificationScreenState extends State<GovernmentVerificationScr
     );
   }
 
-  // Progress Tracker Widget — responsive to narrow phone widths (320–412px)
-  Widget _buildStepProgress() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          // Decide chip style based on available width
-          final useCompact = constraints.maxWidth < 340;
-          return Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(
-                child: _buildStepChip(
-                  useCompact ? 'PAN' : '1. PAN',
-                  _verifiedPan != null,
-                  _currentStep == VerificationStep.pan,
-                  compact: useCompact,
+  Widget _buildHeaderBanner() {
+    return GovCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.primaryNavy.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.verified_user_rounded, color: AppColors.primaryNavy, size: 24),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Verify Your Business',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primaryNavy,
+                  ),
                 ),
-              ),
-              const Icon(Icons.arrow_forward_ios, size: 10, color: Colors.grey),
-              Flexible(
-                child: _buildStepChip(
-                  useCompact ? 'UDYAM' : '2. Udyam',
-                  _verifiedUdyam != null,
-                  _currentStep == VerificationStep.udyam,
-                  compact: useCompact,
+                SizedBox(height: 2),
+                Text(
+                  'Confirm your registered business details before accessing tender applications.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textMuted,
+                    height: 1.35,
+                  ),
                 ),
-              ),
-              const Icon(Icons.arrow_forward_ios, size: 10, color: Colors.grey),
-              Flexible(
-                child: _buildStepChip(
-                  useCompact ? 'GST' : '3. GST',
-                  _verifiedGst != null,
-                  _currentStep == VerificationStep.gst,
-                  compact: useCompact,
-                ),
-              ),
-              const Icon(Icons.arrow_forward_ios, size: 10, color: Colors.grey),
-              Flexible(
-                child: _buildStepChip(
-                  useCompact ? 'OEM' : '4. OEM',
-                  _verifiedOem != null,
-                  _currentStep == VerificationStep.oem,
-                  compact: useCompact,
-                ),
-              ),
-            ],
-          );
-        },
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildStepChip(String label, bool isDone, bool isActive, {bool compact = false}) {
-    Color bg = Colors.grey.shade100;
-    Color fg = Colors.grey.shade600;
-    IconData icon = Icons.circle_outlined;
+  Widget _buildStepperBar() {
+    return GovCard(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(
+        children: [
+          _buildStepPill('PAN', VerificationStep.pan, _verifiedPan != null),
+          _buildStepDivider(),
+          _buildStepPill('UDYAM', VerificationStep.udyam, _verifiedUdyam != null),
+          _buildStepDivider(),
+          _buildStepPill('GST', VerificationStep.gst, _verifiedGst != null),
+          _buildStepDivider(),
+          _buildStepPill('OEM', VerificationStep.oem, _verifiedOem != null),
+        ],
+      ),
+    );
+  }
 
-    if (isDone) {
-      bg = Colors.green.shade50;
-      fg = Colors.green.shade800;
-      icon = Icons.check_circle;
-    } else if (isActive) {
-      bg = GemTheme.primaryNavy.withValues(alpha: 0.1);
-      fg = GemTheme.primaryNavy;
-      icon = Icons.radio_button_checked;
+  Widget _buildStepPill(String label, VerificationStep step, bool isVerified) {
+    final isCurrent = _currentStep == step;
+
+    Color bg;
+    Color text;
+    IconData icon;
+
+    if (isVerified) {
+      bg = AppColors.successBg;
+      text = AppColors.success;
+      icon = Icons.check_circle_rounded;
+    } else if (isCurrent) {
+      bg = AppColors.primaryNavy;
+      text = Colors.white;
+      icon = Icons.radio_button_checked_rounded;
+    } else {
+      bg = AppColors.surfaceElevated;
+      text = AppColors.textMuted;
+      icon = Icons.radio_button_unchecked_rounded;
     }
 
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? 5 : 7,
-        vertical: compact ? 3 : 4,
-      ),
-      decoration:
-          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: compact ? 12 : 14, color: fg),
-          const SizedBox(width: 3),
-          Flexible(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _currentStep = step;
+            _errorMessage = null;
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: text),
+              const SizedBox(height: 2),
+              Text(
                 label,
                 style: TextStyle(
-                  fontSize: compact ? 10 : 11,
-                  fontWeight: FontWeight.bold,
-                  color: fg,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: text,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
+  Widget _buildStepDivider() {
+    return Container(
+      width: 14,
+      height: 1,
+      color: AppColors.border,
+      margin: const EdgeInsets.symmetric(horizontal: 2),
+    );
+  }
 
-  // Card Selector per Step
-  Widget _buildCurrentStepCard() {
+  Widget _buildStepContent() {
     switch (_currentStep) {
       case VerificationStep.pan:
-        return _buildPanStepWidget();
+        return _buildPanStep();
       case VerificationStep.udyam:
-        return _buildUdyamStepWidget();
+        return _buildUdyamStep();
       case VerificationStep.gst:
-        return _buildGstStepWidget();
+        return _buildGstStep();
       case VerificationStep.oem:
-        return _buildOemStepWidget();
-      case VerificationStep.finalized:
-        return _buildFinalizeWidget();
+        return _buildOemStep();
+      default:
+        return const SizedBox.shrink();
     }
   }
 
-  // STEP 1: PAN Widget
-  Widget _buildPanStepWidget() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
-                  child: const Icon(Icons.badge_outlined, color: Colors.blue, size: 22),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Step 1: Verify PAN Details', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: GemTheme.primaryNavy)),
-                      Text('Source: Income Tax PAN Dataset', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const Divider(height: 24),
+  // STEP 1: PAN
+  Widget _buildPanStep() {
+    final isVerified = _verifiedPan != null;
 
-            if (_verifiedPan == null) ...[
-              _buildFieldLabel('PAN Number', isRequired: true),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _panController,
-                textCapitalization: TextCapitalization.characters,
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.badge_outlined, size: 20),
-                  hintText: 'e.g. ABCDE1234F',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-                validator: (v) => (v == null || v.trim().length != 10) ? 'Enter a valid 10-character PAN' : null,
-              ),
-              const SizedBox(height: 14),
-
-              _buildFieldLabel('Verification PIN', isRequired: true),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _panPinController,
-                obscureText: _obscurePin,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.pin_outlined, size: 20),
-                  suffixIcon: IconButton(
-                    icon: Icon(_obscurePin ? Icons.visibility_off : Icons.visibility, size: 20),
-                    onPressed: () => setState(() => _obscurePin = !_obscurePin),
-                  ),
-                  hintText: 'e.g. 123456 or 1',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter verification PIN' : null,
-              ),
-              const SizedBox(height: 20),
-
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _verifyPan,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: GemTheme.primaryNavy,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: _isLoading
-                      ? const Text('VERIFYING...', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))
-                      : const Text('VERIFY PAN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                ),
-              ),
-            ] else ...[
-              _buildSuccessBanner('PAN Verified ✓'),
-              const SizedBox(height: 12),
-              _buildSummaryRow('PAN Number', _verifiedPan!['pan_number'] ?? ''),
-              _buildSummaryRow('Company Name', _verifiedPan!['company_name'] ?? ''),
-              _buildSummaryRow('PAN Status', _verifiedPan!['pan_status'] ?? '', statusColor: Colors.green),
-              _buildSummaryRow('Date of Birth', _verifiedPan!['date_of_birth'] ?? ''),
-              _buildSummaryRow('PAN Holder Type', _verifiedPan!['pan_holder_type'] ?? ''),
-              _buildSummaryRow('Aadhaar Linking', _verifiedPan!['aadhaar_linking_status'] ?? ''),
-              const SizedBox(height: 20),
-
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: () => setState(() => _currentStep = VerificationStep.udyam),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green.shade700,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('CONTINUE TO UDYAM', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      SizedBox(width: 8),
-                      Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  // STEP 2: UDYAM Widget
-  Widget _buildUdyamStepWidget() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.teal.shade50, borderRadius: BorderRadius.circular(8)),
-                  child: const Icon(Icons.factory_outlined, color: Colors.teal, size: 22),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Step 2: Verify Udyam Details', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: GemTheme.primaryNavy)),
-                      Text('Source: MSME Udyam Registration Dataset', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const Divider(height: 24),
-
-            if (_verifiedUdyam == null) ...[
-              _buildFieldLabel('Udyam Registration Number', isRequired: true),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _udyamController,
-                textCapitalization: TextCapitalization.characters,
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.factory_outlined, size: 20),
-                  hintText: 'e.g. UDYAM-MH-01-0000001',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-                validator: (v) => (v == null || v.trim().length < 8) ? 'Enter valid Udyam Registration Number' : null,
-              ),
-              const SizedBox(height: 14),
-
-              _buildFieldLabel('Verification PIN', isRequired: true),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _udyamPinController,
-                obscureText: _obscurePin,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.pin_outlined, size: 20),
-                  suffixIcon: IconButton(
-                    icon: Icon(_obscurePin ? Icons.visibility_off : Icons.visibility, size: 20),
-                    onPressed: () => setState(() => _obscurePin = !_obscurePin),
-                  ),
-                  hintText: 'e.g. 123456 or 3',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter verification PIN' : null,
-              ),
-              const SizedBox(height: 20),
-
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _verifyUdyam,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: GemTheme.primaryNavy,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: _isLoading
-                      ? const Text('VERIFYING...', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))
-                      : const Text('VERIFY UDYAM', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                ),
-              ),
-            ] else ...[
-              _buildSuccessBanner('Udyam Verified ✓'),
-              const SizedBox(height: 12),
-              _buildSummaryRow('Udyam Registration Number', _verifiedUdyam!['udyam_number'] ?? ''),
-              _buildSummaryRow('Company Name', _verifiedUdyam!['company_name'] ?? ''),
-              _buildSummaryRow('Registration Status', _verifiedUdyam!['registration_status'] ?? '', statusColor: Colors.green),
-              _buildSummaryRow('Date of Registration', _verifiedUdyam!['date_of_registration'] ?? ''),
-              _buildSummaryRow('Enterprise Type', _verifiedUdyam!['enterprise_type'] ?? ''),
-              _buildSummaryRow('Investment', _verifiedUdyam!['investment'] ?? ''),
-              _buildSummaryRow('Turnover', _verifiedUdyam!['turnover'] ?? ''),
-              const SizedBox(height: 20),
-
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: () => setState(() => _currentStep = VerificationStep.gst),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green.shade700,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('CONTINUE TO GST', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      SizedBox(width: 8),
-                      Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  // STEP 3: GST Widget
-  Widget _buildGstStepWidget() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.indigo.shade50, borderRadius: BorderRadius.circular(8)),
-                  child: const Icon(Icons.account_balance_outlined, color: Colors.indigo, size: 22),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Step 3: Verify GST Details', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: GemTheme.primaryNavy)),
-                      Text('Source: GST Portal Dataset', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const Divider(height: 24),
-
-            if (_verifiedGst == null) ...[
-              _buildFieldLabel('GST Number', isRequired: true),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _gstController,
-                textCapitalization: TextCapitalization.characters,
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.account_balance_outlined, size: 20),
-                  hintText: 'e.g. 22AAAAA1234A1Z5',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-                validator: (v) => (v == null || v.trim().length != 15) ? 'Enter valid 15-digit GSTIN' : null,
-              ),
-              const SizedBox(height: 14),
-
-              _buildFieldLabel('Verification PIN', isRequired: true),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _gstPinController,
-                obscureText: _obscurePin,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.pin_outlined, size: 20),
-                  suffixIcon: IconButton(
-                    icon: Icon(_obscurePin ? Icons.visibility_off : Icons.visibility, size: 20),
-                    onPressed: () => setState(() => _obscurePin = !_obscurePin),
-                  ),
-                  hintText: 'e.g. 123456 or 2',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter verification PIN' : null,
-              ),
-              const SizedBox(height: 20),
-
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _verifyGst,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: GemTheme.primaryNavy,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: _isLoading
-                      ? const Text('VERIFYING...', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))
-                      : const Text('VERIFY GST', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                ),
-              ),
-            ] else ...[
-              _buildSuccessBanner('GST Verified ✓'),
-              const SizedBox(height: 12),
-              _buildSummaryRow('GSTIN', _verifiedGst!['gstin'] ?? ''),
-              _buildSummaryRow('Company Name', _verifiedGst!['company_name'] ?? ''),
-              _buildSummaryRow('Registration Status', _verifiedGst!['registration_status'] ?? '', statusColor: Colors.green),
-              _buildSummaryRow('Date of Registration', _verifiedGst!['date_of_registration'] ?? ''),
-              _buildSummaryRow('Business Type', _verifiedGst!['business_type'] ?? ''),
-              _buildSummaryRow('State', _verifiedGst!['state'] ?? 'Maharashtra'),
-              _buildSummaryRow('Filing Status', _verifiedGst!['filing_status'] ?? 'Compliant', statusColor: Colors.green),
-              const SizedBox(height: 20),
-
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: () => setState(() => _currentStep = VerificationStep.oem),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green.shade700,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('CONTINUE TO OEM', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      SizedBox(width: 8),
-                      Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  // STEP 4: OEM Widget
-  Widget _buildOemStepWidget() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.amber.shade50, borderRadius: BorderRadius.circular(8)),
-                  child: const Icon(Icons.verified_user_outlined, color: Colors.amber, size: 22),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Step 4: Verify OEM Authorization', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: GemTheme.primaryNavy)),
-                      Text('Source: Manufacturer Authorization Dataset', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const Divider(height: 24),
-
-            if (_verifiedOem == null) ...[
-              _buildFieldLabel('OEM Authorization Number', isRequired: true),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _oemController,
-                textCapitalization: TextCapitalization.characters,
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.verified_user_outlined, size: 20),
-                  hintText: 'e.g. OEM-MH-2026-001',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-                validator: (v) => (v == null || v.trim().length < 4) ? 'Enter valid OEM Authorization Number' : null,
-              ),
-              const SizedBox(height: 14),
-
-              _buildFieldLabel('Verification PIN', isRequired: true),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _oemPinController,
-                obscureText: _obscurePin,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.pin_outlined, size: 20),
-                  suffixIcon: IconButton(
-                    icon: Icon(_obscurePin ? Icons.visibility_off : Icons.visibility, size: 20),
-                    onPressed: () => setState(() => _obscurePin = !_obscurePin),
-                  ),
-                  hintText: 'e.g. 123456 or 4',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter verification PIN' : null,
-              ),
-              const SizedBox(height: 20),
-
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _verifyOem,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: GemTheme.primaryNavy,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: _isLoading
-                      ? const Text('VERIFYING...', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))
-                      : const Text('VERIFY OEM', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                ),
-              ),
-            ] else ...[
-              _buildSuccessBanner('OEM Authorization Verified ✓'),
-              const SizedBox(height: 12),
-              _buildSummaryRow('Authorization Number', _verifiedOem!['authorization_number'] ?? ''),
-              _buildSummaryRow('Company Name', _verifiedOem!['company_name'] ?? ''),
-              _buildSummaryRow('Authorization Status', _verifiedOem!['authorization_status'] ?? '', statusColor: Colors.green),
-              _buildSummaryRow('Date of Issue', _verifiedOem!['date_of_issue'] ?? ''),
-              _buildSummaryRow('Valid Till', _verifiedOem!['valid_till'] ?? '', statusColor: Colors.green),
-              _buildSummaryRow('OEM Name', _verifiedOem!['oem_name'] ?? 'Dell'),
-              _buildSummaryRow('Product Category', _verifiedOem!['product_category'] ?? 'Hardware'),
-              const SizedBox(height: 20),
-
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _finalizeAll,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: GemTheme.saffron,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: _isLoading
-                      ? const Text('FINALIZING PROFILE...', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))
-                      : const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text('FINALIZE & SAVE PROFILE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                            SizedBox(width: 8),
-                            Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
-                          ],
-                        ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  // STEP 5: Finalized Placeholder
-  Widget _buildFinalizeWidget() {
-    return const SizedBox.shrink();
-  }
-
-  // Helper Widgets
-  Widget _buildFieldLabel(String label, {bool isRequired = false}) {
-    return Row(
-      children: [
-        Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: GemTheme.primaryNavy)),
-        if (isRequired) const Text(' *', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-      ],
-    );
-  }
-
-  Widget _buildSuccessBanner(String title) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.green.shade200)),
-      child: Row(
+    return GovCard(
+      elevated: true,
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Icon(Icons.check_circle_rounded, color: Colors.green, size: 20),
-          const SizedBox(width: 8),
-          Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.green.shade900)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('PAN Verification', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primaryNavy)),
+              if (isVerified)
+                StatusBadge.verified(label: 'PAN Verified')
+              else
+                StatusBadge.pending(label: 'Step 1 of 4'),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text('Enter your registered Permanent Account Number (PAN).', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+          const SizedBox(height: AppSpacing.lg),
+          const Divider(),
+          const SizedBox(height: AppSpacing.lg),
+
+          if (!isVerified) ...[
+            const Text('PAN Number', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            TextFormField(
+              controller: _panController,
+              textCapitalization: TextCapitalization.characters,
+              decoration: const InputDecoration(
+                hintText: 'e.g. ABCDE1234F',
+                prefixIcon: Icon(Icons.badge_rounded, size: 18),
+              ),
+              validator: (v) => (v == null || v.trim().length != 10) ? 'Enter valid 10-character PAN' : null,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            const Text('Verification PIN', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            TextFormField(
+              controller: _panPinController,
+              obscureText: _obscurePin,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                hintText: 'Enter 6-digit PIN',
+                prefixIcon: const Icon(Icons.lock_outline_rounded, size: 18),
+                suffixIcon: IconButton(
+                  icon: Icon(_obscurePin ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 18),
+                  onPressed: () => setState(() => _obscurePin = !_obscurePin),
+                ),
+              ),
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter PIN' : null,
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            PrimaryGovButton(
+              label: _isLoading ? 'Connecting to government records...' : 'Verify PAN',
+              isLoading: _isLoading,
+              icon: Icons.check_circle_outline_rounded,
+              onPressed: _verifyPan,
+            ),
+          ] else ...[
+            // Verified Details Result Card
+            _buildResultCard(
+              title: 'PAN RECORD DETAILS',
+              rows: [
+                InfoRow(label: 'Company Name', value: _verifiedPan!['company_name'] ?? 'N/A', isBold: true),
+                InfoRow(label: 'PAN Status', value: _verifiedPan!['pan_status'] ?? 'Active', valueColor: AppColors.success),
+                InfoRow(label: 'Holder Type', value: _verifiedPan!['holder_type'] ?? 'Company'),
+                InfoRow(label: 'Incorporation', value: _verifiedPan!['date_of_birth_or_incorporation'] ?? 'N/A'),
+                InfoRow(label: 'Aadhaar Linkage', value: _verifiedPan!['aadhaar_seeding_status'] ?? 'Linked', valueColor: AppColors.success),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            PrimaryGovButton(
+              label: 'Continue to UDYAM',
+              icon: Icons.arrow_forward_rounded,
+              onPressed: () => setState(() => _currentStep = VerificationStep.udyam),
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildSummaryRow(String label, String value, {Color? statusColor}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  // STEP 2: UDYAM
+  Widget _buildUdyamStep() {
+    final isVerified = _verifiedUdyam != null;
+
+    return GovCard(
+      elevated: true,
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-          const SizedBox(width: 12),
-          Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.end,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: statusColor ?? Colors.black87),
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('UDYAM Verification', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primaryNavy)),
+              if (isVerified)
+                StatusBadge.verified(label: 'UDYAM Verified')
+              else
+                StatusBadge.pending(label: 'Step 2 of 4'),
+            ],
           ),
+          const SizedBox(height: 4),
+          const Text('Enter your registered MSME Udyam registration details.', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+          const SizedBox(height: AppSpacing.lg),
+          const Divider(),
+          const SizedBox(height: AppSpacing.lg),
+
+          if (!isVerified) ...[
+            const Text('Udyam Registration Number', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            TextFormField(
+              controller: _udyamController,
+              decoration: const InputDecoration(
+                hintText: 'e.g. UDYAM-MH-01-0000001',
+                prefixIcon: Icon(Icons.corporate_fare_rounded, size: 18),
+              ),
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter Udyam number' : null,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            const Text('Verification PIN', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            TextFormField(
+              controller: _udyamPinController,
+              obscureText: _obscurePin,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                hintText: 'Enter 6-digit PIN',
+                prefixIcon: const Icon(Icons.lock_outline_rounded, size: 18),
+                suffixIcon: IconButton(
+                  icon: Icon(_obscurePin ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 18),
+                  onPressed: () => setState(() => _obscurePin = !_obscurePin),
+                ),
+              ),
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter PIN' : null,
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            PrimaryGovButton(
+              label: _isLoading ? 'Connecting to government records...' : 'Verify UDYAM',
+              isLoading: _isLoading,
+              icon: Icons.check_circle_outline_rounded,
+              onPressed: _verifyUdyam,
+            ),
+          ] else ...[
+            _buildResultCard(
+              title: 'UDYAM MSME DETAILS',
+              rows: [
+                InfoRow(label: 'Enterprise Name', value: _verifiedUdyam!['enterprise_name'] ?? _verifiedUdyam!['company_name'] ?? 'N/A', isBold: true),
+                InfoRow(label: 'Registration Status', value: _verifiedUdyam!['status'] ?? 'Active', valueColor: AppColors.success),
+                InfoRow(label: 'Enterprise Type', value: _verifiedUdyam!['enterprise_type'] ?? 'Medium Enterprise'),
+                InfoRow(label: 'Major Activity', value: _verifiedUdyam!['major_activity'] ?? 'Services / Manufacturing'),
+                InfoRow(label: 'Annual Turnover', value: _verifiedUdyam!['turnover'] ?? '₹12.00 Cr'),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            PrimaryGovButton(
+              label: 'Continue to GST',
+              icon: Icons.arrow_forward_rounded,
+              onPressed: () => setState(() => _currentStep = VerificationStep.gst),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // STEP 3: GST
+  Widget _buildGstStep() {
+    final isVerified = _verifiedGst != null;
+
+    return GovCard(
+      elevated: true,
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('GSTIN Verification', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primaryNavy)),
+              if (isVerified)
+                StatusBadge.verified(label: 'GST Verified')
+              else
+                StatusBadge.pending(label: 'Step 3 of 4'),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text('Enter your registered 15-digit GSTIN details.', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+          const SizedBox(height: AppSpacing.lg),
+          const Divider(),
+          const SizedBox(height: AppSpacing.lg),
+
+          if (!isVerified) ...[
+            const Text('GSTIN Identifier', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            TextFormField(
+              controller: _gstController,
+              textCapitalization: TextCapitalization.characters,
+              decoration: const InputDecoration(
+                hintText: 'e.g. 22AAAAA1234A1Z5',
+                prefixIcon: Icon(Icons.receipt_long_rounded, size: 18),
+              ),
+              validator: (v) => (v == null || v.trim().length != 15) ? 'Enter valid 15-digit GSTIN' : null,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            const Text('Verification PIN', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            TextFormField(
+              controller: _gstPinController,
+              obscureText: _obscurePin,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                hintText: 'Enter 6-digit PIN',
+                prefixIcon: const Icon(Icons.lock_outline_rounded, size: 18),
+                suffixIcon: IconButton(
+                  icon: Icon(_obscurePin ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 18),
+                  onPressed: () => setState(() => _obscurePin = !_obscurePin),
+                ),
+              ),
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter PIN' : null,
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            PrimaryGovButton(
+              label: _isLoading ? 'Connecting to government records...' : 'Verify GSTIN',
+              isLoading: _isLoading,
+              icon: Icons.check_circle_outline_rounded,
+              onPressed: _verifyGst,
+            ),
+          ] else ...[
+            _buildResultCard(
+              title: 'GST RECORD DETAILS',
+              rows: [
+                InfoRow(label: 'Legal Name', value: _verifiedGst!['legal_name'] ?? _verifiedGst!['company_name'] ?? 'N/A', isBold: true),
+                InfoRow(label: 'Trade Name', value: _verifiedGst!['trade_name'] ?? 'N/A'),
+                InfoRow(label: 'GST Status', value: _verifiedGst!['status'] ?? 'Active', valueColor: AppColors.success),
+                InfoRow(label: 'Taxpayer Type', value: _verifiedGst!['taxpayer_type'] ?? 'Regular'),
+                InfoRow(label: 'State / Jurisdiction', value: _verifiedGst!['state_jurisdiction'] ?? 'Maharashtra'),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            PrimaryGovButton(
+              label: 'Continue to OEM',
+              icon: Icons.arrow_forward_rounded,
+              onPressed: () => setState(() => _currentStep = VerificationStep.oem),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // STEP 4: OEM
+  Widget _buildOemStep() {
+    final isVerified = _verifiedOem != null;
+    final allVerified = _verifiedPan != null && _verifiedUdyam != null && _verifiedGst != null && isVerified;
+
+    return GovCard(
+      elevated: true,
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('OEM Authorization', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primaryNavy)),
+              if (isVerified)
+                StatusBadge.verified(label: 'OEM Verified')
+              else
+                StatusBadge.pending(label: 'Step 4 of 4'),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text('Enter your Manufacturer Authorization Form (MAF) reference.', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+          const SizedBox(height: AppSpacing.lg),
+          const Divider(),
+          const SizedBox(height: AppSpacing.lg),
+
+          if (!isVerified) ...[
+            const Text('OEM Authorization Code', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            TextFormField(
+              controller: _oemController,
+              decoration: const InputDecoration(
+                hintText: 'e.g. OEM-MH-2026-001',
+                prefixIcon: Icon(Icons.verified_rounded, size: 18),
+              ),
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter OEM code' : null,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            const Text('Verification PIN', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            TextFormField(
+              controller: _oemPinController,
+              obscureText: _obscurePin,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                hintText: 'Enter 6-digit PIN',
+                prefixIcon: const Icon(Icons.lock_outline_rounded, size: 18),
+                suffixIcon: IconButton(
+                  icon: Icon(_obscurePin ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 18),
+                  onPressed: () => setState(() => _obscurePin = !_obscurePin),
+                ),
+              ),
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter PIN' : null,
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            PrimaryGovButton(
+              label: _isLoading ? 'Connecting to government records...' : 'Verify OEM',
+              isLoading: _isLoading,
+              icon: Icons.check_circle_outline_rounded,
+              onPressed: _verifyOem,
+            ),
+          ] else ...[
+            _buildResultCard(
+              title: 'OEM AUTHORIZATION DETAILS',
+              rows: [
+                InfoRow(label: 'Authorized Brand', value: _verifiedOem!['oem_brand'] ?? 'Nexora Enterprise OEM', isBold: true),
+                InfoRow(label: 'Authorization No.', value: _verifiedOem!['oem_authorization_number'] ?? _oemController.text),
+                InfoRow(label: 'Validity', value: _verifiedOem!['valid_until'] ?? '31-Dec-2027'),
+                const InfoRow(label: 'Verification Status', value: 'Verified Active', valueColor: AppColors.success),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            if (allVerified)
+              PrimaryGovButton(
+                label: 'Finalize Business Verification',
+                icon: Icons.task_alt_rounded,
+                isLoading: _isLoading,
+                backgroundColor: AppColors.success,
+                onPressed: _finalizeAll,
+              )
+            else
+              const Text(
+                'Complete any remaining verification steps to finalize.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResultCard({required String title, required List<Widget> rows}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.border),
+      ),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, size: 16, color: AppColors.success),
+              const SizedBox(width: 6),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primaryNavy,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          const Divider(),
+          const SizedBox(height: AppSpacing.xs),
+          ...rows,
         ],
       ),
     );

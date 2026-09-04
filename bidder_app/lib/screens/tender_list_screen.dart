@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
-import '../core/theme.dart';
+import '../core/design_system.dart';
 import '../core/api_service.dart';
 import '../models/tender_models.dart';
+import '../widgets/gov_card.dart';
+import '../widgets/status_badge.dart';
+import '../widgets/state_views.dart';
 import 'tender_detail_screen.dart';
-import 'tender_pdf_viewer_screen.dart';
+
+/// ─────────────────────────────────────────────────────────────────────────────
+/// GeM Compliance — National Tender Catalog
+/// Section 13: Government tender portal aesthetic, clean cards, search & filter
+/// ─────────────────────────────────────────────────────────────────────────────
 
 class TenderListScreen extends StatefulWidget {
   const TenderListScreen({super.key});
@@ -18,8 +25,15 @@ class _TenderListScreenState extends State<TenderListScreen> {
   bool _isLoading = true;
   String _searchQuery = '';
   String _selectedCategory = 'ALL';
+  String? _errorMessage;
 
-  final List<String> _categories = ['ALL', 'GOODS', 'SERVICES', 'WORKS', 'INFORMATION TECHNOLOGY'];
+  final List<String> _categories = [
+    'ALL',
+    'GOODS',
+    'SERVICES',
+    'WORKS',
+    'INFORMATION TECHNOLOGY',
+  ];
 
   @override
   void initState() {
@@ -28,27 +42,43 @@ class _TenderListScreenState extends State<TenderListScreen> {
   }
 
   Future<void> _loadTenders() async {
-    setState(() => _isLoading = true);
-    final data = await ApiService.fetchTenders();
     setState(() {
-      _tenders = data;
-      _applyFilter();
-      _isLoading = false;
+      _isLoading = true;
+      _errorMessage = null;
     });
+
+    try {
+      final data = await ApiService.fetchTenders();
+      if (mounted) {
+        setState(() {
+          _tenders = data;
+          _applyFilter();
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Unable to connect to verification service. Please check your internet connection.';
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   void _applyFilter() {
     setState(() {
       _filteredTenders = _tenders.where((t) {
-        // Show only published tenders
-        final isPublished = t.status.isEmpty || t.status.toUpperCase() == 'PUBLISHED';
         final matchesQuery = _searchQuery.isEmpty ||
             t.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
             t.bidNumber.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-            t.organization.toLowerCase().contains(_searchQuery.toLowerCase());
+            t.organization.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+            t.category.toLowerCase().contains(_searchQuery.toLowerCase());
+
         final matchesCategory = _selectedCategory == 'ALL' ||
             t.category.toUpperCase().contains(_selectedCategory);
-        return isPublished && matchesQuery && matchesCategory;
+
+        return matchesQuery && matchesCategory;
       }).toList();
     });
   }
@@ -64,398 +94,325 @@ class _TenderListScreenState extends State<TenderListScreen> {
     return '₹${val.toStringAsFixed(0)}';
   }
 
+  void _clearFilters() {
+    setState(() {
+      _searchQuery = '';
+      _selectedCategory = 'ALL';
+      _applyFilter();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: GemTheme.saffron,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Text(
-                'GeM',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 13),
-              ),
-            ),
-            const SizedBox(width: 10),
-            const Flexible(
-              child: Text(
-                'Live National Tenders',
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-              ),
-            ),
-          ],
-        ),
+        title: const Text('Tenders'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
             tooltip: 'Refresh Tenders',
             onPressed: _loadTenders,
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _loadTenders,
-        color: GemTheme.saffron,
-        child: Column(
-          children: [
-            // Search and Category Filter Header
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-              child: Column(
-                children: [
-                  TextField(
-                    onChanged: (val) {
-                      _searchQuery = val;
-                      _applyFilter();
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'Search by Bid Number, Title, Ministry...',
-                      hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
-                      prefixIcon: const Icon(Icons.search, size: 20, color: GemTheme.primaryNavy),
-                      filled: true,
-                      fillColor: const Color(0xFFF1F5F9),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: _categories.map((cat) {
-                        final isSelected = _selectedCategory == cat;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: FilterChip(
-                            label: Text(
-                              cat,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                color: isSelected ? Colors.white : const Color(0xFF475569),
-                              ),
-                            ),
-                            selected: isSelected,
-                            onSelected: (_) {
-                              setState(() {
-                                _selectedCategory = cat;
-                                _applyFilter();
-                              });
+      body: Column(
+        children: [
+          // Search & Filter Header
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+            child: Column(
+              children: [
+                // Search Input
+                TextField(
+                  onChanged: (val) {
+                    _searchQuery = val.trim();
+                    _applyFilter();
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Search by title, bid number or category...',
+                    prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AppColors.textMuted),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear_rounded, size: 18),
+                            onPressed: () {
+                              _searchQuery = '';
+                              _applyFilter();
                             },
-                            selectedColor: GemTheme.primaryNavy,
-                            backgroundColor: const Color(0xFFF8FAFC),
-                            checkmarkColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              side: BorderSide(
-                                color: isSelected ? GemTheme.primaryNavy : const Color(0xFFCBD5E1),
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
+                          )
+                        : null,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   ),
-                ],
-              ),
-            ),
-            const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                ),
+                const SizedBox(height: AppSpacing.sm),
 
-            Expanded(
-              child: _isLoading
-                  ? const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          CircularProgressIndicator(color: GemTheme.saffron),
-                          SizedBox(height: 16),
-                          Text(
-                            'Connecting to GeM Verification Cloud...',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: GemTheme.primaryNavy),
+                // Category Chips
+                SizedBox(
+                  height: 34,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _categories.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (context, idx) {
+                      final cat = _categories[idx];
+                      final isSelected = _selectedCategory == cat;
+                      return ChoiceChip(
+                        label: Text(
+                          cat == 'ALL' ? 'All Tenders (${_tenders.length})' : cat,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                            color: isSelected ? Colors.white : AppColors.textSecondary,
                           ),
-                          SizedBox(height: 6),
-                          Text(
-                            'Cloud services may take a moment to wake up on first load.',
-                            style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                          ),
-                        ],
-                      ),
-                    )
-                  : _filteredTenders.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.search_off, size: 56, color: Colors.grey),
-                              const SizedBox(height: 12),
-                              const Text(
-                                'No matching tenders found',
-                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
-                              ),
-                              const SizedBox(height: 6),
-                              const Text('Try adjusting your search criteria or category filter.', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                              const SizedBox(height: 16),
-                              ElevatedButton.icon(
-                                onPressed: () {
-                                  setState(() {
-                                    _searchQuery = '';
-                                    _selectedCategory = 'ALL';
-                                    _applyFilter();
-                                  });
-                                },
-                                icon: const Icon(Icons.filter_alt_off, size: 16),
-                                label: const Text('Reset Filters'),
-                              ),
-                            ],
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _filteredTenders.length,
-                          itemBuilder: (context, index) {
-                            final tender = _filteredTenders[index];
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                side: const BorderSide(color: Color(0xFFE2E8F0)),
-                              ),
-                              elevation: 1,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(12),
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => TenderDetailScreen(tender: tender),
-                                    ),
-                                  );
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Flexible(
-                                            child: Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                              decoration: BoxDecoration(
-                                                color: GemTheme.primaryNavy.withValues(alpha: 0.08),
-                                                borderRadius: BorderRadius.circular(6),
-                                                border: Border.all(color: GemTheme.primaryNavy.withValues(alpha: 0.2)),
-                                              ),
-                                              child: Text(
-                                                tender.bidNumber,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: const TextStyle(
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: GemTheme.primaryNavy,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFDCFCE7),
-                                              border: Border.all(color: const Color(0xFF86EFAC)),
-                                              borderRadius: BorderRadius.circular(12),
-                                            ),
-                                            child: Text(
-                                              tender.status,
-                                              style: const TextStyle(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                                color: Color(0xFF166534),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Text(
-                                        tender.title,
-                                        maxLines: 3,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: Color(0xFF0F172A),
-                                          height: 1.3,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.account_balance, size: 14, color: Color(0xFF64748B)),
-                                          const SizedBox(width: 6),
-                                          Expanded(
-                                            child: Text(
-                                              tender.organization,
-                                              style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.category_outlined, size: 14, color: Color(0xFF64748B)),
-                                          const SizedBox(width: 6),
-                                          Expanded(
-                                            child: Text(
-                                              tender.category,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            '${tender.requirements.length} Clauses',
-                                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: GemTheme.primaryNavy),
-                                          ),
-                                        ],
-                                      ),
-                                      const Divider(height: 22, color: Color(0xFFF1F5F9)),
-                                      Row(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Expanded(
-                                            flex: 5,
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                const Text('Estimated Value', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                                                const SizedBox(height: 2),
-                                                Text(
-                                                  _formatValue(tender.estimatedValue),
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                  style: const TextStyle(
-                                                    fontSize: 13,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: GemTheme.primaryNavy,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            flex: 6,
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.end,
-                                              children: [
-                                                const Text('Submission Deadline', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                                                const SizedBox(height: 2),
-                                                Text(
-                                                  tender.submissionDeadline.isEmpty ? 'As per GeM Notice' : tender.submissionDeadline,
-                                                  maxLines: 2,
-                                                  textAlign: TextAlign.end,
-                                                  overflow: TextOverflow.ellipsis,
-                                                  style: const TextStyle(
-                                                    fontSize: 11,
-                                                    color: Color(0xFFC2410C),
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 14),
-                                      // Direct Action Buttons: [ VIEW TENDER ] & [ APPLY ]
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: OutlinedButton.icon(
-                                              onPressed: () {
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (_) => TenderPdfViewerScreen(tender: tender),
-                                                  ),
-                                                );
-                                              },
-                                              icon: const Icon(Icons.picture_as_pdf, size: 16, color: Color(0xFFDC2626)),
-                                              label: const Text(
-                                                'VIEW TENDER',
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: GemTheme.primaryNavy,
-                                                ),
-                                              ),
-                                              style: OutlinedButton.styleFrom(
-                                                padding: const EdgeInsets.symmetric(vertical: 10),
-                                                side: const BorderSide(color: Color(0xFFCBD5E1)),
-                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Expanded(
-                                            child: ElevatedButton.icon(
-                                              onPressed: () {
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (_) => TenderDetailScreen(tender: tender),
-                                                  ),
-                                                );
-                                              },
-                                              icon: const Icon(Icons.check_circle_outline, size: 16, color: Colors.white),
-                                              label: const Text(
-                                                'APPLY',
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Colors.white,
-                                                ),
-                                              ),
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: GemTheme.primaryNavy,
-                                                padding: const EdgeInsets.symmetric(vertical: 10),
-                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
                         ),
+                        selected: isSelected,
+                        selectedColor: AppColors.primaryNavy,
+                        backgroundColor: AppColors.surfaceElevated,
+                        showCheckmark: false,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                          side: BorderSide(
+                            color: isSelected ? AppColors.primaryNavy : AppColors.border,
+                          ),
+                        ),
+                        onSelected: (_) {
+                          setState(() {
+                            _selectedCategory = cat;
+                            _applyFilter();
+                          });
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+
+          const Divider(height: 1),
+
+          // Main Body
+          Expanded(
+            child: _buildBody(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const GovLoadingSkeleton(count: 4);
+    }
+
+    if (_errorMessage != null) {
+      return GovErrorState(
+        message: _errorMessage!,
+        onRetry: _loadTenders,
+      );
+    }
+
+    if (_filteredTenders.isEmpty) {
+      return GovEmptyState(
+        title: 'No matching tenders found',
+        description: 'Try changing your search keywords or category filters.',
+        actionLabel: 'Clear Filters',
+        onAction: _clearFilters,
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadTenders,
+      color: AppColors.primaryNavy,
+      child: ListView.separated(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        itemCount: _filteredTenders.length,
+        separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
+        itemBuilder: (context, idx) {
+          final tender = _filteredTenders[idx];
+          return _buildTenderCard(tender);
+        },
+      ),
+    );
+  }
+
+  Widget _buildTenderCard(TenderModel tender) {
+    final emdText = tender.emdRequired && tender.emdAmount > 0
+        ? '₹${tender.emdAmount.toStringAsFixed(0)}'
+        : 'Not Required';
+
+    final valueText = _formatValue(tender.estimatedValue);
+
+    return GovCard(
+      elevated: true,
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => TenderDetailScreen(tender: tender),
+          ),
+        );
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Row 1: Bid Number & Category Badge + Status
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceElevated,
+                  borderRadius: BorderRadius.circular(AppRadius.xs),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Text(
+                  tender.bidNumber,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primaryNavy,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  tender.category,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              StatusBadge(status: tender.status, compact: true),
+            ],
+          ),
+
+          const SizedBox(height: AppSpacing.sm),
+
+          // Row 2: Tender Title (Auto-wrapping, zero overflow)
+          Text(
+            tender.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+              height: 1.35,
+            ),
+          ),
+
+          const SizedBox(height: 6),
+
+          // Row 3: Organization
+          Row(
+            children: [
+              const Icon(Icons.account_balance_rounded, size: 14, color: AppColors.textMuted),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  tender.organization,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: AppSpacing.md),
+          const Divider(),
+          const SizedBox(height: AppSpacing.sm),
+
+          // Row 4: Key Metadata Attributes
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Quantity', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                    const SizedBox(height: 1),
+                    Text(
+                      '${tender.quantity.toInt()} ${tender.unit}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Est. Value', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                    const SizedBox(height: 1),
+                    Text(
+                      valueText,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('EMD', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                    const SizedBox(height: 1),
+                    Text(
+                      emdText,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: AppSpacing.sm),
+
+          // Row 5: Submission Deadline + View Button
+          Row(
+            children: [
+              const Icon(Icons.schedule_rounded, size: 13, color: AppColors.textMuted),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  'Submission: ${tender.submissionDeadline}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                ),
+              ),
+              const Text(
+                'View Tender →',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primaryNavy,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

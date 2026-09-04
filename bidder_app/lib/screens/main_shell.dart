@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
-import '../core/theme.dart';
+import '../core/design_system.dart';
 import '../core/api_service.dart';
+import 'home_screen.dart';
 import 'tender_list_screen.dart';
 import 'my_applications_screen.dart';
-import 'document_vault_screen.dart';
 import 'notifications_screen.dart';
 import 'profile_screen.dart';
+
+/// ─────────────────────────────────────────────────────────────────────────────
+/// MainShellScreen — Government Digital Service Persistent Navigation
+/// Section 5: HOME, TENDERS, APPLICATIONS, NOTIFICATIONS, PROFILE
+/// ─────────────────────────────────────────────────────────────────────────────
 
 class MainShellScreen extends StatefulWidget {
   final int initialIndex;
@@ -27,20 +32,31 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   Future<void> _checkUnreadNotifications() async {
-    final notifs = await ApiService.fetchNotifications();
-    if (mounted) {
-      setState(() {
-        _unreadNotifCount = notifs.where((n) => !n.read).length;
-      });
+    try {
+      final notifs = await ApiService.fetchNotifications();
+      if (mounted) {
+        setState(() {
+          _unreadNotifCount = notifs.where((n) => !n.read).length;
+        });
+      }
+    } catch (_) {}
+  }
+
+  void _onNavigateTab(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+    if (index == 3) {
+      _checkUnreadNotifications();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final screens = [
+      HomeScreen(onNavigateTab: _onNavigateTab),
       const TenderListScreen(),
       const MyApplicationsScreen(),
-      const DocumentVaultScreen(),
       NotificationsScreen(onNotificationUpdated: _checkUnreadNotifications),
       const ProfileScreen(),
     ];
@@ -50,56 +66,59 @@ class _MainShellScreenState extends State<MainShellScreen> {
         index: _currentIndex,
         children: screens,
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-          if (index == 3) {
-            _checkUnreadNotifications();
-          }
-        },
-        backgroundColor: Colors.white,
-        elevation: 4,
-        indicatorColor: GemTheme.primaryNavy.withValues(alpha: 0.12),
-        destinations: [
-          const NavigationDestination(
-            icon: Icon(Icons.travel_explore_outlined),
-            selectedIcon: Icon(Icons.travel_explore, color: GemTheme.primaryNavy),
-            label: 'Tenders',
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(
+            top: BorderSide(color: AppColors.border, width: 1),
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.assignment_outlined),
-            selectedIcon: Icon(Icons.assignment, color: GemTheme.primaryNavy),
-            label: 'My Bids',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.folder_shared_outlined),
-            selectedIcon: Icon(Icons.folder_shared, color: GemTheme.primaryNavy),
-            label: 'Vault',
-          ),
-          NavigationDestination(
-            icon: Badge(
-              isLabelVisible: _unreadNotifCount > 0,
-              label: Text('$_unreadNotifCount'),
-              backgroundColor: GemTheme.saffron,
-              child: const Icon(Icons.notifications_outlined),
+        ),
+        child: NavigationBar(
+          selectedIndex: _currentIndex,
+          onDestinationSelected: _onNavigateTab,
+          backgroundColor: Colors.white,
+          elevation: 0,
+          height: 64,
+          indicatorColor: AppColors.primaryNavy.withValues(alpha: 0.1),
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          destinations: [
+            const NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home_rounded, color: AppColors.primaryNavy),
+              label: 'Home',
             ),
-            selectedIcon: Badge(
-              isLabelVisible: _unreadNotifCount > 0,
-              label: Text('$_unreadNotifCount'),
-              backgroundColor: GemTheme.saffron,
-              child: const Icon(Icons.notifications, color: GemTheme.primaryNavy),
+            const NavigationDestination(
+              icon: Icon(Icons.travel_explore_outlined),
+              selectedIcon: Icon(Icons.travel_explore_rounded, color: AppColors.primaryNavy),
+              label: 'Tenders',
             ),
-            label: 'Alerts',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person, color: GemTheme.primaryNavy),
-            label: 'Profile',
-          ),
-        ],
+            const NavigationDestination(
+              icon: Icon(Icons.assignment_outlined),
+              selectedIcon: Icon(Icons.assignment_rounded, color: AppColors.primaryNavy),
+              label: 'Applications',
+            ),
+            NavigationDestination(
+              icon: Badge(
+                isLabelVisible: _unreadNotifCount > 0,
+                label: Text('$_unreadNotifCount'),
+                backgroundColor: AppColors.saffron,
+                child: const Icon(Icons.notifications_outlined),
+              ),
+              selectedIcon: Badge(
+                isLabelVisible: _unreadNotifCount > 0,
+                label: Text('$_unreadNotifCount'),
+                backgroundColor: AppColors.saffron,
+                child: const Icon(Icons.notifications_rounded, color: AppColors.primaryNavy),
+              ),
+              label: 'Alerts',
+            ),
+            const NavigationDestination(
+              icon: Icon(Icons.person_outline_rounded),
+              selectedIcon: Icon(Icons.person_rounded, color: AppColors.primaryNavy),
+              label: 'Profile',
+            ),
+          ],
+        ),
       ),
     );
   }

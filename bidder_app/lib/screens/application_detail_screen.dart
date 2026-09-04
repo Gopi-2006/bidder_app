@@ -1,8 +1,18 @@
 import 'package:flutter/material.dart';
-import '../core/theme.dart';
+import '../core/design_system.dart';
 import '../core/api_service.dart';
 import '../models/tender_models.dart';
+import '../widgets/gov_card.dart';
+import '../widgets/gov_buttons.dart';
+import '../widgets/status_badge.dart';
+import '../widgets/compliance_score_ring.dart';
+import '../widgets/state_views.dart';
 import 'evidence_upload_screen.dart';
+
+/// ─────────────────────────────────────────────────────────────────────────────
+/// GeM Compliance — Application Detail & AI Compliance Verification
+/// Sections 16, 17, 18, 20, 21: Guided workflow, AI analysis engine, Readiness
+/// ─────────────────────────────────────────────────────────────────────────────
 
 class ApplicationDetailScreen extends StatefulWidget {
   final String applicationId;
@@ -23,6 +33,7 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
   List<EvidenceModel> _evidenceList = [];
   bool _isLoading = true;
   bool _isSubmitting = false;
+  int _activeWorkflowStep = 1; // 0: Review, 1: Documents & Compliance, 2: Submission Readiness
 
   @override
   void initState() {
@@ -32,14 +43,20 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
 
   Future<void> _loadApplicationData() async {
     setState(() => _isLoading = true);
-    final app = await ApiService.fetchApplication(widget.applicationId);
-    final evs = await ApiService.fetchApplicationEvidence(widget.applicationId);
+    try {
+      final app = await ApiService.fetchApplication(widget.applicationId);
+      final evs = await ApiService.fetchApplicationEvidence(widget.applicationId);
 
-    setState(() {
-      _application = app;
-      _evidenceList = evs;
-      _isLoading = false;
-    });
+      if (mounted) {
+        setState(() {
+          _application = app;
+          _evidenceList = evs;
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _submitFinalApplication() async {
@@ -48,13 +65,13 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Confirm Final Bid Submission'),
         content: const Text(
-          'Are you sure you want to formally submit this bid application to the GeM Procurement Committee? All active uploaded evidence and deterministic rule evaluations will be sealed for officer review.',
+          'Are you sure you want to formally submit this bid application to the GeM Procurement Committee? All uploaded evidence and compliance evaluations will be sealed for officer review.',
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: GemTheme.primaryNavy),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryNavy),
             child: const Text('Confirm & Submit'),
           ),
         ],
@@ -66,62 +83,15 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
       final success = await ApiService.submitApplication(widget.applicationId);
       setState(() => _isSubmitting = false);
 
-      if (success) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              backgroundColor: Color(0xFF166534),
-              content: Text('Bid Application submitted successfully to GeM Officers!'),
-            ),
-          );
-          _loadApplicationData();
-        }
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: AppColors.success,
+            content: Text('Bid Application submitted successfully to GeM Officers!'),
+          ),
+        );
+        _loadApplicationData();
       }
-    }
-  }
-
-  Widget _buildStatusChip(String? status) {
-    switch (status?.toUpperCase()) {
-      case 'PASS':
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: const Color(0xFFDCFCE7),
-            border: Border.all(color: const Color(0xFF86EFAC)),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Text('PASS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF166534))),
-        );
-      case 'REVIEW':
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFEF3C7),
-            border: Border.all(color: const Color(0xFFFCD34D)),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Text('REVIEW NEEDED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF92400E))),
-        );
-      case 'FAIL':
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFEE2E2),
-            border: Border.all(color: const Color(0xFFFCA5A5)),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Text('ACTION REQUIRED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF991B1B))),
-        );
-      default:
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF1F5F9),
-            border: Border.all(color: const Color(0xFFCBD5E1)),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Text('NOT STARTED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
-        );
     }
   }
 
@@ -135,374 +105,443 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
     final failCount = results.where((r) => r.status.toUpperCase() == 'FAIL').length;
     final totalReqs = tender.requirements.length;
 
-    final progressPercent = totalReqs > 0 ? (passCount / totalReqs) : 0.0;
+    final double score = totalReqs > 0 ? (passCount / totalReqs) : 0.0;
     final isSubmitted = _application?.overallStatus.toUpperCase() == 'SUBMITTED' ||
         _application?.overallStatus.toUpperCase() == 'DECIDED';
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(widget.applicationId, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-            Text('Tender: ${tender.bidNumber}', style: const TextStyle(fontSize: 11, color: Color(0xFF93C5FD))),
+            Text(widget.applicationId, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+            Text('Tender: ${tender.bidNumber}', style: const TextStyle(fontSize: 11, color: Colors.white70)),
           ],
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'Refresh Status',
             onPressed: _loadApplicationData,
           ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: GemTheme.saffron))
+          ? const GovLoadingSkeleton(count: 3)
           : RefreshIndicator(
               onRefresh: _loadApplicationData,
-              color: GemTheme.saffron,
+              color: AppColors.primaryNavy,
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(AppSpacing.lg),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Summary Header Card
-                    Card(
-                      elevation: 2,
-                      child: Padding(
-                        padding: const EdgeInsets.all(18),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text(
-                                  'Application Verification State',
-                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: GemTheme.primaryNavy),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: isSubmitted ? const Color(0xFFDCFCE7) : const Color(0xFFEFF6FF),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: isSubmitted ? const Color(0xFF86EFAC) : const Color(0xFFBFDBFE),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    _application?.overallStatus ?? 'IN_PROGRESS',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: isSubmitted ? const Color(0xFF166534) : const Color(0xFF1D4ED8),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: LinearProgressIndicator(
-                                value: progressPercent,
-                                minHeight: 8,
-                                backgroundColor: const Color(0xFFE2E8F0),
-                                color: progressPercent == 1.0 ? const Color(0xFF16A34A) : GemTheme.saffron,
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
-                              children: [
-                                _buildMetricBox('PASS', passCount, const Color(0xFF166534), const Color(0xFFDCFCE7)),
-                                _buildMetricBox('REVIEW', reviewCount, const Color(0xFF92400E), const Color(0xFFFEF3C7)),
-                                _buildMetricBox('FAIL', failCount, const Color(0xFF991B1B), const Color(0xFFFEE2E2)),
-                                _buildMetricBox('TOTAL', totalReqs, GemTheme.primaryNavy, const Color(0xFFF1F5F9)),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
+                    // Guided Application Stepper
+                    _buildGuidedWorkflowStepper(),
+                    const SizedBox(height: AppSpacing.lg),
+
+                    // AI Compliance Analysis Card with Circular Score
+                    ComplianceSummaryCard(
+                      score: score,
+                      passCount: passCount,
+                      reviewCount: reviewCount,
+                      failCount: failCount,
+                      totalCount: totalReqs,
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: AppSpacing.xl),
 
-                    // Section Heading
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Clause Requirements Checklist',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: GemTheme.primaryNavy),
-                        ),
-                        Text(
-                          '$passCount/$totalReqs Verified',
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
-                        ),
-                      ],
+                    // Requirements Checklist Section
+                    SectionHeader(
+                      title: 'Requirements & Document Verification',
+                      subtitle: '$passCount of $totalReqs clauses satisfied',
                     ),
-                    const SizedBox(height: 12),
+                    _buildRequirementsList(tender, results),
+                    const SizedBox(height: AppSpacing.xl),
 
-                    // Requirements Cards List
-                    ...tender.requirements.map((req) {
-                      final evalResult = results.firstWhere(
-                        (r) => r.requirementId == req.requirementId,
-                        orElse: () => RuleEvaluationModel(
-                          resultId: '',
-                          requirementId: req.requirementId,
-                          status: 'NOT_STARTED',
-                          ruleVersion: '',
-                          explanation: 'No evidence uploaded yet.',
-                          plainLanguageBidderMsg: 'Document attachment required for deterministic verification.',
-                          reasonCodes: [],
-                          evaluatedValues: {},
-                          timestamp: '',
-                        ),
-                      );
-
-                      final activeEvidence = _evidenceList.where(
-                        (e) => (e.requirementId == req.requirementId || req.expectedDocumentTypes.contains(e.documentType)) && e.status == 'ACTIVE',
-                      ).toList();
-
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(
-                            color: evalResult.status == 'PASS'
-                                ? const Color(0xFF86EFAC)
-                                : evalResult.status == 'REVIEW'
-                                    ? const Color(0xFFFCD34D)
-                                    : evalResult.status == 'FAIL'
-                                        ? const Color(0xFFFCA5A5)
-                                        : const Color(0xFFE2E8F0),
-                          ),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF1F5F9),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      req.clauseReference,
-                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      req.title,
-                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                                    ),
-                                  ),
-                                  _buildStatusChip(evalResult.status),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                req.description,
-                                style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
-                              ),
-                              if (activeEvidence.isNotEmpty) ...[
-                                const SizedBox(height: 10),
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF8FAFC),
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.description, size: 16, color: Color(0xFF2563EB)),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: Text(
-                                          'Attached: ${activeEvidence.first.fileName} (v${activeEvidence.first.version})',
-                                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFDCFCE7),
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: const Text('DRIVE SYNCED', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF166534))),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                              if (evalResult.status != 'NOT_STARTED') ...[
-                                const SizedBox(height: 10),
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: evalResult.status == 'PASS'
-                                        ? const Color(0xFFF0FDF4)
-                                        : evalResult.status == 'REVIEW'
-                                            ? const Color(0xFFFFFBEB)
-                                            : const Color(0xFFFEF2F2),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            evalResult.status == 'PASS'
-                                                ? Icons.check_circle_outline
-                                                : evalResult.status == 'REVIEW'
-                                                    ? Icons.help_outline
-                                                    : Icons.error_outline,
-                                            size: 16,
-                                            color: evalResult.status == 'PASS'
-                                                ? const Color(0xFF16A34A)
-                                                : evalResult.status == 'REVIEW'
-                                                    ? const Color(0xFFD97706)
-                                                    : const Color(0xFFDC2626),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            'Rule Engine Verification:',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.bold,
-                                              color: evalResult.status == 'PASS'
-                                                ? const Color(0xFF166534)
-                                                : evalResult.status == 'REVIEW'
-                                                    ? const Color(0xFF92400E)
-                                                    : const Color(0xFF991B1B),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        evalResult.plainLanguageBidderMsg.isNotEmpty
-                                            ? evalResult.plainLanguageBidderMsg
-                                            : evalResult.explanation,
-                                        style: const TextStyle(fontSize: 11, color: Color(0xFF334155), height: 1.3),
-                                      ),
-                                      if (evalResult.reasonCodes.isNotEmpty) ...[
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          'Reason Trigger: ${evalResult.reasonCodes.join(", ")}',
-                                          style: const TextStyle(fontSize: 10, color: Color(0xFFB45309), fontStyle: FontStyle.italic),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                              ],
-                              const SizedBox(height: 12),
-                              if (!isSubmitted)
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: OutlinedButton.icon(
-                                    onPressed: () async {
-                                      await Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => EvidenceUploadScreen(
-                                            requirement: req,
-                                            applicationId: widget.applicationId,
-                                          ),
-                                        ),
-                                      );
-                                      _loadApplicationData();
-                                    },
-                                    icon: Icon(
-                                      evalResult.status == 'NOT_STARTED' ? Icons.upload_file : Icons.sync,
-                                      size: 16,
-                                    ),
-                                    label: Text(
-                                      evalResult.status == 'NOT_STARTED'
-                                          ? 'Upload Evidence Document'
-                                          : evalResult.status == 'REVIEW'
-                                              ? 'Resolve Review / Upload Replacement'
-                                              : 'Replace / Upload New Version',
-                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }),
-                    const SizedBox(height: 90),
+                    // Submission Readiness Card (Section 21)
+                    _buildSubmissionReadinessCard(
+                      passCount: passCount,
+                      totalReqs: totalReqs,
+                      failCount: failCount,
+                      isSubmitted: isSubmitted,
+                    ),
+                    const SizedBox(height: AppSpacing.xxl),
                   ],
                 ),
               ),
             ),
-      bottomSheet: !isSubmitted
-          ? Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 10,
-                    offset: const Offset(0, -4),
-                  ),
-                ],
-              ),
-              child: SafeArea(
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: _isSubmitting ? null : _submitFinalApplication,
-                    icon: _isSubmitting
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                          )
-                        : const Icon(Icons.send_rounded),
-                    label: Text(
-                      _isSubmitting ? 'Submitting Application...' : 'Submit Application to Officer',
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: GemTheme.primaryNavy,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                  ),
-                ),
-              ),
-            )
-          : null,
     );
   }
 
-  Widget _buildMetricBox(String label, int count, Color textColor, Color bgColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
+  Widget _buildGuidedWorkflowStepper() {
+    return GovCard(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(
         children: [
-          Text(
-            '$count',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor),
+          _buildWorkflowStepItem(0, '1. Review', Icons.search_rounded),
+          _buildWorkflowArrow(),
+          _buildWorkflowStepItem(1, '2. Compliance', Icons.fact_check_rounded),
+          _buildWorkflowArrow(),
+          _buildWorkflowStepItem(2, '3. Submit', Icons.send_rounded),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWorkflowStepItem(int stepIdx, String label, IconData icon) {
+    final isCurrent = _activeWorkflowStep == stepIdx;
+    final isCompleted = _activeWorkflowStep > stepIdx;
+
+    Color color;
+    if (isCompleted) {
+      color = AppColors.success;
+    } else if (isCurrent) {
+      color = AppColors.primaryNavy;
+    } else {
+      color = AppColors.textMuted;
+    }
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _activeWorkflowStep = stepIdx),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(isCompleted ? Icons.check_circle_rounded : icon, size: 16, color: color),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWorkflowArrow() {
+    return const Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.border);
+  }
+
+  Widget _buildRequirementsList(TenderModel tender, List<RuleEvaluationModel> results) {
+    return Column(
+      children: tender.requirements.map((req) {
+        final evalResult = results.firstWhere(
+          (r) => r.requirementId == req.requirementId,
+          orElse: () => RuleEvaluationModel(
+            resultId: '',
+            requirementId: req.requirementId,
+            status: 'NOT_STARTED',
+            ruleVersion: '',
+            explanation: 'No document attached yet.',
+            plainLanguageBidderMsg: 'Document attachment required for deterministic verification.',
+            reasonCodes: [],
+            evaluatedValues: {},
+            timestamp: '',
           ),
-          Text(
-            label,
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: textColor),
+        );
+
+        final activeEvidence = _evidenceList.where(
+          (e) => (e.requirementId == req.requirementId || req.expectedDocumentTypes.contains(e.documentType)) && e.status == 'ACTIVE',
+        ).toList();
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.md),
+          child: GovCard(
+            elevated: true,
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header: Clause + Title + Status Badge
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceElevated,
+                        borderRadius: BorderRadius.circular(AppRadius.xs),
+                      ),
+                      child: Text(
+                        req.clauseReference.isNotEmpty ? req.clauseReference : 'Clause',
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        req.title,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                      ),
+                    ),
+                    StatusBadge(status: evalResult.status, compact: true),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  req.description,
+                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.35),
+                ),
+
+                // Attached Evidence Document
+                if (activeEvidence.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceElevated,
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.description_rounded, size: 16, color: AppColors.info),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Attached: ${activeEvidence.first.fileName}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                          ),
+                        ),
+                        StatusBadge.verified(label: 'Verified', compact: true),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // Deterministic Bidder Explanation
+                if (evalResult.status != 'NOT_STARTED') ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: evalResult.status == 'PASS'
+                          ? AppColors.successBg
+                          : evalResult.status == 'REVIEW'
+                              ? AppColors.warningBg
+                              : AppColors.errorBg,
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                      border: Border.all(
+                        color: evalResult.status == 'PASS'
+                            ? AppColors.successBorder
+                            : evalResult.status == 'REVIEW'
+                                ? AppColors.warningBorder
+                                : AppColors.errorBorder,
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          evalResult.status == 'PASS'
+                              ? Icons.check_circle_rounded
+                              : evalResult.status == 'REVIEW'
+                                  ? Icons.info_outline_rounded
+                                  : Icons.error_outline_rounded,
+                          size: 15,
+                          color: evalResult.status == 'PASS'
+                              ? AppColors.success
+                              : evalResult.status == 'REVIEW'
+                                  ? AppColors.warning
+                                  : AppColors.error,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            evalResult.plainLanguageBidderMsg,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: evalResult.status == 'PASS'
+                                  ? AppColors.success
+                                  : evalResult.status == 'REVIEW'
+                                      ? AppColors.warning
+                                      : AppColors.error,
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // Action: Upload or Re-upload Document
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final updated = await Navigator.push<bool>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => EvidenceUploadScreen(
+                            requirement: req,
+                            applicationId: widget.applicationId,
+                          ),
+                        ),
+                      );
+                      if (updated == true) {
+                        _loadApplicationData();
+                      }
+                    },
+                    icon: Icon(
+                      activeEvidence.isNotEmpty ? Icons.upload_file_rounded : Icons.add_circle_outline_rounded,
+                      size: 14,
+                    ),
+                    label: Text(
+                      activeEvidence.isNotEmpty ? 'Update Document' : 'Upload Document',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 34),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildSubmissionReadinessCard({
+    required int passCount,
+    required int totalReqs,
+    required int failCount,
+    required bool isSubmitted,
+  }) {
+    final isReady = passCount == totalReqs && totalReqs > 0;
+
+    return GovCard(
+      elevated: true,
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      borderColor: isSubmitted
+          ? AppColors.successBorder
+          : isReady
+              ? AppColors.successBorder
+              : AppColors.border,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isReady || isSubmitted ? AppColors.successBg : AppColors.warningBg,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isSubmitted
+                      ? Icons.task_alt_rounded
+                      : isReady
+                          ? Icons.check_circle_rounded
+                          : Icons.pending_actions_rounded,
+                  size: 22,
+                  color: isReady || isSubmitted ? AppColors.success : AppColors.warning,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isSubmitted
+                          ? 'APPLICATION SUBMITTED'
+                          : isReady
+                              ? 'READY TO SUBMIT'
+                              : 'SUBMISSION INCOMPLETE',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: isReady || isSubmitted ? AppColors.success : AppColors.warning,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    Text(
+                      isSubmitted
+                          ? 'Sealed for procurement committee evaluation'
+                          : isReady
+                              ? 'All required clauses and documents satisfied'
+                              : '$failCount clause(s) require action before final bid submission',
+                      style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: AppSpacing.lg),
+          const Divider(),
+          const SizedBox(height: AppSpacing.md),
+
+          // Checklist
+          _buildChecklistItem('Business verified & cross-checked', true),
+          _buildChecklistItem('PAN & GST records active', true),
+          _buildChecklistItem('Clause evidence documents attached', passCount > 0),
+          _buildChecklistItem('All mandatory requirements satisfied', isReady),
+
+          const SizedBox(height: AppSpacing.xl),
+
+          if (isSubmitted)
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.successBg,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: const Text(
+                'This application has been formally submitted. Modifications are locked pending officer evaluation.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.success),
+              ),
+            )
+          else
+            PrimaryGovButton(
+              label: isReady ? 'Submit Final Bid Application' : 'Resolve Incomplete Clauses to Submit',
+              icon: Icons.send_rounded,
+              isLoading: _isSubmitting,
+              backgroundColor: isReady ? AppColors.success : AppColors.primaryNavy.withValues(alpha: 0.6),
+              onPressed: isReady ? _submitFinalApplication : null,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChecklistItem(String title, bool isSatisfied) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        children: [
+          Icon(
+            isSatisfied ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+            size: 16,
+            color: isSatisfied ? AppColors.success : AppColors.textDisabled,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSatisfied ? FontWeight.w600 : FontWeight.w400,
+                color: isSatisfied ? AppColors.textPrimary : AppColors.textMuted,
+              ),
+            ),
           ),
         ],
       ),

@@ -1,6 +1,15 @@
 import 'package:flutter/material.dart';
-import '../core/theme.dart';
+import '../core/design_system.dart';
+import '../widgets/gov_card.dart';
+import '../widgets/gov_buttons.dart';
+import '../widgets/status_badge.dart';
+import '../widgets/state_views.dart';
 import 'main_shell.dart';
+
+/// ─────────────────────────────────────────────────────────────────────────────
+/// GeM Compliance — Final Business Verified Screen
+/// Section 10: Official government verification completion
+/// ─────────────────────────────────────────────────────────────────────────────
 
 class CompanyProfileConfirmationScreen extends StatelessWidget {
   final Map<String, dynamic> company;
@@ -19,200 +28,167 @@ class CompanyProfileConfirmationScreen extends StatelessWidget {
     final udyamData = governmentDetails['udyam'] as Map<String, dynamic>? ?? {};
     final oemData = governmentDetails['oem'] as Map<String, dynamic>? ?? {};
 
-    final companyName = company['name'] ?? panData['company_name'] ?? 'Verified Enterprise';
+    final companyName = company['name'] ?? panData['company_name'] ?? 'Nexora Technologies Pvt. Ltd.';
 
     return Scaffold(
-      backgroundColor: GemTheme.background,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Company Profile Verified'),
-        backgroundColor: GemTheme.primaryNavy,
+        title: const Text('Business Verification Complete'),
         automaticallyImplyLeading: false,
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
-          child: Center(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(AppSpacing.xl),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 600),
+              constraints: const BoxConstraints(maxWidth: 540),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Verification Success Header Card
-                  Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: Column(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade50,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.green.shade200, width: 2),
-                            ),
-                            child: const Icon(Icons.verified_rounded, size: 48, color: Colors.green),
+                  // Large Official Success Icon & Title
+                  Center(
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: AppColors.successBg,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppColors.successBorder, width: 2),
                           ),
-                          const SizedBox(height: 16),
-                          Text(
-                            companyName,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: GemTheme.primaryNavy,
-                            ),
+                          child: const Icon(
+                            Icons.verified_rounded,
+                            size: 46,
+                            color: AppColors.success,
                           ),
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade100,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.check_circle, size: 16, color: Colors.green.shade800),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'GOVERNMENT VERIFIED ENTERPRISE',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.green.shade900,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ],
-                            ),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        const Text(
+                          'Business Successfully Verified',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primaryNavy,
+                            letterSpacing: -0.4,
                           ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'All 4 government documents and authentication credentials have been verified.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'All submitted business credentials have been cross-checked successfully against official records.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textMuted,
+                            height: 1.4,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 16),
 
-                  // Section Title
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
-                    child: Text(
-                      'VERIFIED GOVERNMENT RECORDS',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey,
-                        letterSpacing: 1.0,
-                      ),
-                    ),
-                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.xl),
 
-                  // 1. PAN Document Card
-                  _buildDetailCard(
-                    title: 'Income Tax PAN Details',
-                    icon: Icons.badge_outlined,
-                    color: Colors.blue.shade700,
-                    fields: [
-                      _DetailItem('PAN Number', panData['pan_number']?.toString() ?? 'N/A', isBold: true),
-                      _DetailItem('PAN Status', panData['pan_status']?.toString() ?? 'Active', statusColor: Colors.green),
-                      _DetailItem('Date of Birth', panData['date_of_birth']?.toString() ?? ''),
-                      _DetailItem('Entity Type', panData['pan_holder_type']?.toString() ?? 'Company'),
-                      _DetailItem('Aadhaar Linking', panData['aadhaar_linking_status']?.toString() ?? 'Linked'),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-
-                  // 2. GSTIN Document Card
-                  _buildDetailCard(
-                    title: 'GST Identification (GSTIN)',
-                    icon: Icons.account_balance_outlined,
-                    color: Colors.indigo.shade700,
-                    fields: [
-                      _DetailItem('GSTIN', gstData['gstin']?.toString() ?? 'N/A', isBold: true),
-                      _DetailItem('Registration Status', gstData['registration_status']?.toString() ?? 'Active', statusColor: Colors.green),
-                      _DetailItem('Date of Registration', gstData['date_of_registration']?.toString() ?? ''),
-                      _DetailItem('Business Type', gstData['business_type']?.toString() ?? ''),
-                      _DetailItem('State', gstData['state']?.toString() ?? 'Maharashtra'),
-                      _DetailItem('Filing Status', gstData['filing_status']?.toString() ?? 'Compliant', statusColor: Colors.green),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-
-                  // 3. Udyam Registration Card
-                  _buildDetailCard(
-                    title: 'MSME Udyam Registration',
-                    icon: Icons.factory_outlined,
-                    color: Colors.teal.shade700,
-                    fields: [
-                      _DetailItem('Udyam Number', udyamData['udyam_number']?.toString() ?? 'N/A', isBold: true),
-                      _DetailItem('Registration Status', udyamData['registration_status']?.toString() ?? 'Active', statusColor: Colors.green),
-                      _DetailItem('Date of Registration', udyamData['date_of_registration']?.toString() ?? ''),
-                      _DetailItem('Enterprise Type', udyamData['enterprise_type']?.toString() ?? 'Manufacturing'),
-                      _DetailItem('Investment', udyamData['investment']?.toString() ?? ''),
-                      _DetailItem('Turnover', udyamData['turnover']?.toString() ?? ''),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-
-                  // 4. OEM Authorization Card
-                  _buildDetailCard(
-                    title: 'OEM Authorization Certificate',
-                    icon: Icons.verified_user_outlined,
-                    color: Colors.amber.shade900,
-                    fields: [
-                      _DetailItem('Authorization No.', oemData['authorization_number']?.toString() ?? 'N/A', isBold: true),
-                      _DetailItem('Status', oemData['authorization_status']?.toString() ?? 'Active', statusColor: Colors.green),
-                      _DetailItem('Date of Issue', oemData['date_of_issue']?.toString() ?? ''),
-                      _DetailItem('Valid Till', oemData['valid_till']?.toString() ?? '', statusColor: Colors.green),
-                      _DetailItem('OEM Brand', oemData['oem_name']?.toString() ?? 'Dell'),
-                      _DetailItem('Product Category', oemData['product_category']?.toString() ?? 'Hardware'),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Continue Button
-                  SizedBox(
-                    height: 52,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(builder: (_) => const MainShellScreen()),
-                          (route) => false,
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: GemTheme.primaryNavy,
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'CONTINUE TO APP',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
-                              color: Colors.white,
-                            ),
+                  // Government Credentials Verified Checklist
+                  GovCard(
+                    elevated: true,
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'VERIFIED GOVERNMENT CREDENTIALS',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textMuted,
+                            letterSpacing: 0.6,
                           ),
-                          SizedBox(width: 8),
-                          Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        _buildVerificationRow(
+                          title: 'PAN Record',
+                          identifier: panData['pan_number'] ?? 'Permanent Account Number',
+                          status: 'Verified',
+                        ),
+                        const Divider(height: 16),
+                        _buildVerificationRow(
+                          title: 'Udyam Registration',
+                          identifier: udyamData['udyam_number'] ?? 'MSME Enterprise',
+                          status: 'Verified',
+                        ),
+                        const Divider(height: 16),
+                        _buildVerificationRow(
+                          title: 'GSTIN Identifier',
+                          identifier: gstData['gstin'] ?? 'GST Network Active',
+                          status: 'Verified',
+                        ),
+                        const Divider(height: 16),
+                        _buildVerificationRow(
+                          title: 'OEM Authorization',
+                          identifier: oemData['oem_authorization_number'] ?? 'Authorized Vendor',
+                          status: 'Verified',
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 20),
+
+                  const SizedBox(height: AppSpacing.lg),
+
+                  // Registered Business Details Card
+                  GovCard(
+                    elevated: true,
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'REGISTERED ENTERPRISE',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textMuted,
+                                letterSpacing: 0.6,
+                              ),
+                            ),
+                            StatusBadge.verified(label: 'Active & Verified', compact: true),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        Text(
+                          companyName,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primaryNavy,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        InfoRow(label: 'Registration Type', value: udyamData['enterprise_type'] ?? 'Medium Enterprise'),
+                        InfoRow(label: 'Jurisdiction State', value: gstData['state_jurisdiction'] ?? 'Maharashtra'),
+                        const InfoRow(label: 'Audit Status', value: 'Government Verified', valueColor: AppColors.success),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: AppSpacing.xxl),
+
+                  // Primary Button
+                  PrimaryGovButton(
+                    label: 'Continue to GeM Compliance',
+                    icon: Icons.arrow_forward_rounded,
+                    onPressed: () {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (_) => const MainShellScreen()),
+                        (route) => false,
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
@@ -222,85 +198,39 @@ class CompanyProfileConfirmationScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailCard({
+  Widget _buildVerificationRow({
     required String title,
-    required IconData icon,
-    required Color color,
-    required List<_DetailItem> fields,
+    required String identifier,
+    required String status,
   }) {
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon, size: 18, color: color),
+    return Row(
+      children: [
+        const Icon(Icons.check_circle_rounded, size: 18, color: AppColors.success),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: color,
-                    ),
-                  ),
+              ),
+              Text(
+                identifier,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textMuted,
                 ),
-              ],
-            ),
-            const Divider(height: 20),
-            Column(
-              children: fields.map((item) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        item.label,
-                        style: const TextStyle(fontSize: 13, color: Colors.grey),
-                      ),
-                      const SizedBox(width: 12),
-                      Flexible(
-                        child: Text(
-                          item.value,
-                          textAlign: TextAlign.end,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: item.isBold ? FontWeight.bold : FontWeight.w600,
-                            color: item.statusColor ?? Colors.black87,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
-      ),
+        StatusBadge.verified(label: status, compact: true),
+      ],
     );
   }
-}
-
-class _DetailItem {
-  final String label;
-  final String value;
-  final bool isBold;
-  final Color? statusColor;
-
-  _DetailItem(this.label, this.value, {this.isBold = false, this.statusColor});
 }

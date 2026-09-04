@@ -155,7 +155,7 @@ class _TenderPdfViewerScreenState extends State<TenderPdfViewerScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Streaming official GeM PDF securely from Google Drive storage...',
+                'Streaming official GeM procurement document securely...',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Color(0xFF94A3B8),

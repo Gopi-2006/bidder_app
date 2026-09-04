@@ -1,8 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import '../core/theme.dart';
+import '../core/design_system.dart';
 import '../core/api_service.dart';
 import '../models/tender_models.dart';
+import '../widgets/gov_card.dart';
+import '../widgets/gov_buttons.dart';
+import '../widgets/status_badge.dart';
+import '../widgets/state_views.dart';
+
+/// ─────────────────────────────────────────────────────────────────────────────
+/// GeM Compliance — Secure Document Upload & Evaluation
+/// Section 19: Clean government-grade document upload with real-time analysis
+/// ─────────────────────────────────────────────────────────────────────────────
 
 class EvidenceUploadScreen extends StatefulWidget {
   final RequirementModel requirement;
@@ -21,326 +30,323 @@ class EvidenceUploadScreen extends StatefulWidget {
 class _EvidenceUploadScreenState extends State<EvidenceUploadScreen> {
   bool _isProcessing = false;
   String _uploadStatusMessage = '';
+  String? _errorMessage;
 
-  final List<Map<String, String>> _mockVaultFiles = [
+  final List<Map<String, String>> _verifiedVaultFiles = [
     {
       'type': 'GST_CERTIFICATE',
-      'name': 'Bharat_GSTIN_Active_2025.pdf',
-      'desc': 'Active GSTIN 29ABCDE1234F1Z5 • Registered Karnataka',
+      'name': 'Bharat_GSTIN_Active_2026.pdf',
+      'desc': 'Active GSTIN 29ABCDE1234F1Z5 • Government Verified',
     },
     {
       'type': 'PAN_CARD',
       'name': 'Company_PAN_Bharat.pdf',
-      'desc': 'Permanent Account Number AAACB1234F • NSDL Verified',
+      'desc': 'Permanent Account Number • Verified',
     },
     {
       'type': 'UDYAM_CERTIFICATE',
       'name': 'Udyam_MSME_Certificate.pdf',
-      'desc': 'UDYAM-KR-03-0012345 • Small Enterprise Category',
+      'desc': 'UDYAM-MH-01-0000001 • Medium Enterprise',
     },
     {
       'type': 'CA_TURNOVER_CERTIFICATE',
-      'name': 'CA_Turnover_Audited_Statement.pdf',
-      'desc': 'Audited Average Turnover ₹24.50 Cr • FY 2022-25',
-    },
-    {
-      'type': 'CA_TURNOVER_CERTIFICATE',
-      'name': 'CA_Turnover_High_Statement.pdf',
-      'desc': 'Audited Statement ₹32.80 Cr with UDIN • FY 2022-25',
+      'name': 'CA_Audited_Turnover_Statement.pdf',
+      'desc': 'Audited Statement ₹24.50 Cr with UDIN • FY 2022-25',
     },
     {
       'type': 'OEM_AUTHORIZATION',
       'name': 'Cisco_OEM_MAF_Letter.pdf',
-      'desc': 'Manufacturer Authorization Form • Cisco Systems India',
+      'desc': 'Manufacturer Authorization Form (MAF)',
     },
     {
       'type': 'TECHNICAL_DECLARATION',
       'name': 'Signed_Technical_Compliance_Sheet.pdf',
-      'desc': 'Formally signed Clause 5.3 technical schedule',
+      'desc': 'Formally signed Technical Specification Schedule',
     },
   ];
 
   Future<void> _processUpload(String docType, String fileName) async {
     setState(() {
       _isProcessing = true;
-      _uploadStatusMessage = '1/3 Encrypting & Uploading to Google Drive hierarchy...';
+      _errorMessage = null;
+      _uploadStatusMessage = '1/3 Securely uploading document...';
     });
 
-    await Future.delayed(const Duration(milliseconds: 600));
+    await Future.delayed(const Duration(milliseconds: 500));
 
     if (!mounted) return;
     setState(() {
-      _uploadStatusMessage = '2/3 Performing OCR & Extracting key attributes...';
+      _uploadStatusMessage = '2/3 Verifying document attributes & signatures...';
     });
 
-    await Future.delayed(const Duration(milliseconds: 600));
+    await Future.delayed(const Duration(milliseconds: 500));
 
     if (!mounted) return;
     setState(() {
-      _uploadStatusMessage = '3/3 Executing Deterministic Rule Engine...';
+      _uploadStatusMessage = '3/3 Running automated compliance analysis...';
     });
 
-    final success = await ApiService.uploadEvidence(
-      applicationId: widget.applicationId,
-      requirementId: widget.requirement.requirementId,
-      documentType: docType,
-      fileName: fileName,
-    );
-
-    setState(() {
-      _isProcessing = false;
-      _uploadStatusMessage = '';
-    });
-
-    if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: const Color(0xFF166534),
-          content: Text('Document "$fileName" uploaded to Google Drive & verified!'),
-        ),
+    try {
+      final success = await ApiService.uploadEvidence(
+        applicationId: widget.applicationId,
+        requirementId: widget.requirement.requirementId,
+        documentType: docType,
+        fileName: fileName,
       );
-      Navigator.pop(context);
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          backgroundColor: Color(0xFFDC2626),
-          content: Text('Upload failed. Please check network or file format.'),
-        ),
-      );
+
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              backgroundColor: AppColors.success,
+              content: Text('Document successfully uploaded & verified!'),
+            ),
+          );
+          Navigator.pop(context, true);
+        } else {
+          setState(() {
+            _errorMessage = 'Verification service was unable to evaluate this document.';
+          });
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+          _errorMessage = 'Connection error during document upload. Please try again.';
+        });
+      }
     }
   }
 
-  Future<void> _pickLocalFile() async {
+  Future<void> _pickDeviceFile() async {
     try {
       final result = await FilePickerPlatform.instance.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+        allowedExtensions: ['pdf'],
       );
 
       if (result.isNotEmpty) {
         final file = result.first;
         final docType = widget.requirement.expectedDocumentTypes.isNotEmpty
             ? widget.requirement.expectedDocumentTypes.first
-            : 'TECHNICAL_DECLARATION';
-
-        _processUpload(docType, file.name);
+            : 'SUPPORTING_DOCUMENT';
+        await _processUpload(docType, file.name);
       }
-    } catch (e) {
-      if (mounted) {
-        // Fallback for emulator / web environment
-        final docType = widget.requirement.expectedDocumentTypes.isNotEmpty
-            ? widget.requirement.expectedDocumentTypes.first
-            : 'TECHNICAL_DECLARATION';
-        _processUpload(docType, 'Selected_Document_${widget.requirement.clauseReference.replaceAll(" ", "_")}.pdf');
-      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open file picker. Select from verified documents below.')),
+      );
     }
-  }
-
-  void _simulateCameraCapture() {
-    final docType = widget.requirement.expectedDocumentTypes.isNotEmpty
-        ? widget.requirement.expectedDocumentTypes.first
-        : 'TECHNICAL_DECLARATION';
-    _processUpload(docType, 'Scanned_Camera_Evidence_${DateTime.now().millisecondsSinceEpoch}.pdf');
   }
 
   @override
   Widget build(BuildContext context) {
     final req = widget.requirement;
-    final matchingDocs = _mockVaultFiles.where((f) {
-      if (req.expectedDocumentTypes.isEmpty) return true;
-      return req.expectedDocumentTypes.contains(f['type']);
-    }).toList();
-
-    final otherVaultDocs = _mockVaultFiles.where((f) {
-      return !req.expectedDocumentTypes.contains(f['type']);
-    }).toList();
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Evidence Upload & Verification'),
+        title: const Text('Upload Evidence Document'),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Requirement Context Header
-            Card(
-              elevation: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
+            // Clause Requirement Card
+            GovCard(
+              elevated: true,
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceElevated,
+                          borderRadius: BorderRadius.circular(AppRadius.xs),
+                        ),
+                        child: Text(
+                          req.clauseReference.isNotEmpty ? req.clauseReference : 'Clause',
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          req.title,
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                        ),
+                      ),
+                      StatusBadge(status: req.requirementType, compact: true),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    req.description,
+                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+                  ),
+                  const SizedBox(height: 10),
+                  const Divider(),
+                  const SizedBox(height: 6),
+                  const Row(
+                    children: [
+                      Icon(Icons.info_outline_rounded, size: 14, color: AppColors.textMuted),
+                      SizedBox(width: 6),
+                      Text(
+                        'Accepted format: PDF  •  Max size: 15 MB',
+                        style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.lg),
+
+            // In-Progress Processing Animation Card
+            if (_isProcessing) ...[
+              GovCard(
+                elevated: true,
+                padding: const EdgeInsets.all(AppSpacing.xl),
+                borderColor: AppColors.infoBorder,
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            req.clauseReference,
-                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            req.title,
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: GemTheme.primaryNavy),
-                          ),
-                        ),
-                      ],
+                    const SizedBox(
+                      width: 36,
+                      height: 36,
+                      child: CircularProgressIndicator(strokeWidth: 3, color: AppColors.primaryNavy),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.lg),
                     Text(
-                      req.description,
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF475569), height: 1.3),
+                      _uploadStatusMessage,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryNavy,
+                      ),
                     ),
-                    const Divider(height: 20),
-                    Row(
-                      children: [
-                        const Icon(Icons.document_scanner_outlined, size: 16, color: GemTheme.saffron),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            'Required Document Type: ${req.expectedDocumentTypes.join(", ")}',
-                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
-                          ),
-                        ),
-                      ],
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Automated compliance verification in progress...',
+                      style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                     ),
                   ],
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
+              const SizedBox(height: AppSpacing.lg),
+            ],
 
-            if (_isProcessing) ...[
-              Card(
-                color: const Color(0xFFFFFBEB),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
+            // Error Message
+            if (_errorMessage != null) ...[
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.errorBg,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: Border.all(color: AppColors.errorBorder),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline_rounded, size: 18, color: AppColors.error),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(_errorMessage!, style: const TextStyle(fontSize: 12, color: AppColors.error)),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
+
+            // Option 1: Pick from Device
+            PrimaryGovButton(
+              label: 'Select PDF from Device',
+              icon: Icons.upload_file_rounded,
+              isLoading: _isProcessing,
+              onPressed: _pickDeviceFile,
+            ),
+
+            const SizedBox(height: AppSpacing.xl),
+
+            // Option 2: Select from Verified Enterprise Document Vault
+            const SectionHeader(
+              title: 'Or Select from Verified Vault',
+              subtitle: 'Pre-authenticated business certificates',
+            ),
+
+            ..._verifiedVaultFiles.map((vf) {
+              final isMatching = req.expectedDocumentTypes.contains(vf['type']) ||
+                  vf['type'] == 'TECHNICAL_DECLARATION';
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: GovCard(
+                  onTap: _isProcessing
+                      ? null
+                      : () => _processUpload(vf['type']!, vf['name']!),
+                  borderColor: isMatching ? AppColors.infoBorder : AppColors.border,
+                  backgroundColor: isMatching ? AppColors.infoBg.withValues(alpha: 0.3) : Colors.white,
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Row(
                     children: [
-                      const CircularProgressIndicator(color: GemTheme.saffron),
-                      const SizedBox(height: 16),
-                      Text(
-                        _uploadStatusMessage,
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
-                        textAlign: TextAlign.center,
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: isMatching ? AppColors.infoBg : AppColors.surfaceElevated,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.picture_as_pdf_rounded,
+                          size: 18,
+                          color: isMatching ? AppColors.info : AppColors.textMuted,
+                        ),
                       ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'FastAPI is syncing binary to Google Drive and calculating deterministic compliance.',
-                        style: TextStyle(fontSize: 11, color: Color(0xFFB45309)),
-                        textAlign: TextAlign.center,
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              vf['name']!,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              vf['desc']!,
+                              style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                            ),
+                          ],
+                        ),
                       ),
+                      if (isMatching)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.successBg,
+                            borderRadius: BorderRadius.circular(AppRadius.xs),
+                          ),
+                          child: const Text(
+                            'RECOMMENDED',
+                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.success),
+                          ),
+                        ),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
-            ],
-
-            // Section 1: Upload from Reusable Document Vault
-            const Text(
-              'Option 1: Attach from Bidder Document Vault',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: GemTheme.primaryNavy),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Select pre-verified company records stored in your secure vault.',
-              style: TextStyle(fontSize: 11, color: Colors.grey),
-            ),
-            const SizedBox(height: 10),
-
-            if (matchingDocs.isNotEmpty) ...[
-              ...matchingDocs.map((doc) {
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  child: ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(Icons.picture_as_pdf, color: Colors.red, size: 22),
-                    ),
-                    title: Text(doc['name']!, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                    subtitle: Text(doc['desc']!, style: const TextStyle(fontSize: 10, color: Color(0xFF64748B))),
-                    trailing: ElevatedButton(
-                      onPressed: _isProcessing ? null : () => _processUpload(doc['type']!, doc['name']!),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: GemTheme.primaryNavy,
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      ),
-                      child: const Text('Attach', style: TextStyle(fontSize: 12)),
-                    ),
-                  ),
-                );
-              }),
-            ],
-
-            if (otherVaultDocs.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              ExpansionTile(
-                title: const Text('View other documents in vault', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                children: otherVaultDocs.map((doc) {
-                  return ListTile(
-                    leading: const Icon(Icons.description_outlined, size: 20),
-                    title: Text(doc['name']!, style: const TextStyle(fontSize: 12)),
-                    subtitle: Text(doc['type']!, style: const TextStyle(fontSize: 10)),
-                    trailing: TextButton(
-                      onPressed: _isProcessing ? null : () => _processUpload(doc['type']!, doc['name']!),
-                      child: const Text('Use Anyway'),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
-
-            const SizedBox(height: 20),
-            const Divider(),
-            const SizedBox(height: 12),
-
-            // Section 2: Direct Device Upload
-            const Text(
-              'Option 2: Upload from Local Device or Camera',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: GemTheme.primaryNavy),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _isProcessing ? null : _pickLocalFile,
-                    icon: const Icon(Icons.upload_file, color: GemTheme.primaryNavy),
-                    label: const Text('Pick PDF / File'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      side: const BorderSide(color: GemTheme.primaryNavy),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _isProcessing ? null : _simulateCameraCapture,
-                    icon: const Icon(Icons.camera_alt_outlined, color: GemTheme.saffron),
-                    label: const Text('Scan Camera'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      side: const BorderSide(color: GemTheme.saffron),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 30),
+              );
+            }),
           ],
         ),
       ),
